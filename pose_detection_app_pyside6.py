@@ -500,7 +500,9 @@ class PoseDetectionApp(QMainWindow):
 
         # 初始化水印设置
         self.watermark_enabled = False
+        self.watermark_type = "文字水印"
         self.watermark_text = "Pose Analysis"
+        self.watermark_image_path = "snownavi_logo.png"
         self.watermark_position = "右下角"
         self.watermark_opacity = 70
         self.watermark_size = "中"
@@ -922,7 +924,21 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_enabled_cb.stateChanged.connect(self.on_watermark_enabled_changed)
         watermark_layout.addWidget(self.watermark_enabled_cb)
 
-        # 水印文本
+        # 水印类型选择
+        type_layout = QHBoxLayout()
+        type_layout.addWidget(QLabel("水印类型:"))
+        self.watermark_type_combo = QComboBox()
+        self.watermark_type_combo.addItems(["文字水印", "图片水印"])
+        self.watermark_type_combo.setCurrentText("文字水印")
+        self.watermark_type_combo.currentTextChanged.connect(self.on_watermark_type_changed)
+        type_layout.addWidget(self.watermark_type_combo)
+        watermark_layout.addLayout(type_layout)
+
+        # 文字水印设置
+        self.text_watermark_widget = QWidget()
+        text_watermark_layout = QVBoxLayout(self.text_watermark_widget)
+        text_watermark_layout.setContentsMargins(0, 0, 0, 0)
+
         text_layout = QHBoxLayout()
         text_layout.addWidget(QLabel("水印文本:"))
         self.watermark_text_input = QLineEdit()
@@ -930,14 +946,40 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_text_input.setText("Pose Analysis")
         self.watermark_text_input.textChanged.connect(self.on_watermark_text_changed)
         text_layout.addWidget(self.watermark_text_input)
-        watermark_layout.addLayout(text_layout)
+        text_watermark_layout.addLayout(text_layout)
+
+        watermark_layout.addWidget(self.text_watermark_widget)
+
+        # 图片水印设置
+        self.image_watermark_widget = QWidget()
+        image_watermark_layout = QVBoxLayout(self.image_watermark_widget)
+        image_watermark_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 图片选择
+        image_layout = QHBoxLayout()
+        image_layout.addWidget(QLabel("水印图片:"))
+        self.watermark_image_input = QLineEdit()
+        self.watermark_image_input.setPlaceholderText("选择水印图片...")
+        self.watermark_image_input.setText("snownavi_logo.png")
+        self.watermark_image_input.textChanged.connect(self.on_watermark_image_changed)
+        image_layout.addWidget(self.watermark_image_input)
+
+        self.watermark_image_browse_btn = ModernButton("浏览", "📁", "#2196F3")
+        self.watermark_image_browse_btn.clicked.connect(self.browse_watermark_image)
+        image_layout.addWidget(self.watermark_image_browse_btn)
+        image_watermark_layout.addLayout(image_layout)
+
+        watermark_layout.addWidget(self.image_watermark_widget)
+
+        # 默认隐藏图片水印设置
+        self.image_watermark_widget.setVisible(False)
 
         # 水印位置
         position_layout = QHBoxLayout()
         position_layout.addWidget(QLabel("位置:"))
         self.watermark_position_combo = QComboBox()
         self.watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
-        self.watermark_position_combo.setCurrentText("右下角")
+        self.watermark_position_combo.setCurrentText("右下角")  # 文字水印默认右下角
         self.watermark_position_combo.currentTextChanged.connect(self.on_watermark_position_changed)
         position_layout.addWidget(self.watermark_position_combo)
         watermark_layout.addLayout(position_layout)
@@ -1049,7 +1091,10 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_enabled = (state == Qt.CheckState.Checked.value)
         # 启用/禁用水印相关控件
         enabled = self.watermark_enabled
+        self.watermark_type_combo.setEnabled(enabled)
         self.watermark_text_input.setEnabled(enabled)
+        self.watermark_image_input.setEnabled(enabled)
+        self.watermark_image_browse_btn.setEnabled(enabled)
         self.watermark_position_combo.setEnabled(enabled)
         self.watermark_opacity_slider.setEnabled(enabled)
         self.watermark_size_combo.setEnabled(enabled)
@@ -1070,6 +1115,40 @@ class PoseDetectionApp(QMainWindow):
     def on_watermark_size_changed(self, size):
         """水印大小改变"""
         self.watermark_size = size
+
+    def on_watermark_type_changed(self, watermark_type):
+        """水印类型改变"""
+        self.watermark_type = watermark_type
+
+        # 切换显示相应的设置控件
+        if watermark_type == "文字水印":
+            self.text_watermark_widget.setVisible(True)
+            self.image_watermark_widget.setVisible(False)
+            # 文字水印默认右下角
+            if self.watermark_position_combo.currentText() == "左下角":
+                self.watermark_position_combo.setCurrentText("右下角")
+        else:  # 图片水印
+            self.text_watermark_widget.setVisible(False)
+            self.image_watermark_widget.setVisible(True)
+            # 图片水印默认左下角
+            if self.watermark_position_combo.currentText() == "右下角":
+                self.watermark_position_combo.setCurrentText("左下角")
+
+    def on_watermark_image_changed(self, image_path):
+        """水印图片路径改变"""
+        self.watermark_image_path = image_path
+
+    def browse_watermark_image(self):
+        """浏览选择水印图片"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.export_dialog,
+            "选择水印图片",
+            "",
+            "图片文件 (*.png *.jpg *.jpeg *.bmp *.gif);;所有文件 (*.*)"
+        )
+        if file_path:
+            self.watermark_image_input.setText(file_path)
+            self.watermark_image_path = file_path
 
     def toggle_export_preview(self):
         """切换导出预览播放"""
@@ -1127,8 +1206,11 @@ class PoseDetectionApp(QMainWindow):
             processed_frame = self.process_pose_detection(frame)
 
             # 如果启用水印，添加水印
-            if self.watermark_enabled and self.watermark_text:
-                processed_frame = self.add_watermark(processed_frame)
+            if self.watermark_enabled:
+                if self.watermark_type == "文字水印" and self.watermark_text:
+                    processed_frame = self.add_text_watermark(processed_frame)
+                elif self.watermark_type == "图片水印" and self.watermark_image_path:
+                    processed_frame = self.add_image_watermark(processed_frame)
 
             return processed_frame
 
@@ -1136,8 +1218,8 @@ class PoseDetectionApp(QMainWindow):
             print(f"处理导出帧时出错: {e}")
             return frame
 
-    def add_watermark(self, frame):
-        """添加水印到帧"""
+    def add_text_watermark(self, frame):
+        """添加文字水印到帧"""
         try:
 
             # 获取帧尺寸
@@ -1192,8 +1274,128 @@ class PoseDetectionApp(QMainWindow):
             return frame
 
         except Exception as e:
-            print(f"添加水印时出错: {e}")
+            print(f"添加文字水印时出错: {e}")
             return frame
+
+    def add_image_watermark(self, frame):
+        """添加图片水印到帧"""
+        try:
+            import os
+
+            # 检查图片文件是否存在
+            if not os.path.exists(self.watermark_image_path):
+                print(f"水印图片不存在: {self.watermark_image_path}")
+                return frame
+
+            # 读取水印图片
+            watermark_img = cv2.imread(self.watermark_image_path, cv2.IMREAD_UNCHANGED)
+            if watermark_img is None:
+                print(f"无法读取水印图片: {self.watermark_image_path}")
+                return frame
+
+            # 获取帧和水印图片的尺寸
+            frame_height, frame_width = frame.shape[:2]
+
+            # 根据大小设置调整水印尺寸
+            size_map = {"小": 0.05, "中": 0.08, "大": 0.12}
+            scale_factor = size_map.get(self.watermark_size, 0.08)
+
+            # 计算水印大小（基于帧的较小边）
+            base_size = min(frame_width, frame_height)
+            watermark_width = int(base_size * scale_factor)
+
+            # 保持水印图片的宽高比
+            if len(watermark_img.shape) == 3:
+                wm_h, wm_w = watermark_img.shape[:2]
+            else:
+                wm_h, wm_w = watermark_img.shape
+
+            aspect_ratio = wm_h / wm_w
+            watermark_height = int(watermark_width * aspect_ratio)
+
+            # 调整水印图片大小
+            watermark_resized = cv2.resize(watermark_img, (watermark_width, watermark_height))
+
+            # 计算水印位置
+            margin = 20
+            if self.watermark_position == "右下角":
+                x = frame_width - watermark_width - margin
+                y = frame_height - watermark_height - margin
+            elif self.watermark_position == "右上角":
+                x = frame_width - watermark_width - margin
+                y = margin
+            elif self.watermark_position == "左下角":
+                x = margin
+                y = frame_height - watermark_height - margin
+            elif self.watermark_position == "左上角":
+                x = margin
+                y = margin
+            else:  # 居中
+                x = (frame_width - watermark_width) // 2
+                y = (frame_height - watermark_height) // 2
+
+            # 确保水印不会超出帧边界
+            x = max(0, min(x, frame_width - watermark_width))
+            y = max(0, min(y, frame_height - watermark_height))
+
+            # 添加水印到帧
+            if len(watermark_resized.shape) == 4:  # 带透明通道的PNG
+                self.add_watermark_with_alpha(frame, watermark_resized, x, y)
+            else:  # 不带透明通道的图片
+                self.add_watermark_without_alpha(frame, watermark_resized, x, y)
+
+            return frame
+
+        except Exception as e:
+            print(f"添加图片水印时出错: {e}")
+            return frame
+
+    def add_watermark_with_alpha(self, frame, watermark, x, y):
+        """添加带透明通道的水印"""
+        try:
+            h, w = watermark.shape[:2]
+
+            # 提取RGB和Alpha通道
+            watermark_rgb = watermark[:, :, :3]
+            watermark_alpha = watermark[:, :, 3] / 255.0
+
+            # 应用透明度设置
+            alpha_factor = self.watermark_opacity / 100.0
+            watermark_alpha = watermark_alpha * alpha_factor
+
+            # 获取帧的对应区域
+            frame_region = frame[y:y+h, x:x+w]
+
+            # 混合图像
+            for c in range(3):
+                frame_region[:, :, c] = (
+                    watermark_alpha * watermark_rgb[:, :, c] +
+                    (1 - watermark_alpha) * frame_region[:, :, c]
+                )
+
+            frame[y:y+h, x:x+w] = frame_region
+
+        except Exception as e:
+            print(f"添加带透明通道水印时出错: {e}")
+
+    def add_watermark_without_alpha(self, frame, watermark, x, y):
+        """添加不带透明通道的水印"""
+        try:
+            h, w = watermark.shape[:2]
+
+            # 应用透明度
+            alpha = self.watermark_opacity / 100.0
+
+            # 获取帧的对应区域
+            frame_region = frame[y:y+h, x:x+w]
+
+            # 混合图像
+            cv2.addWeighted(watermark, alpha, frame_region, 1 - alpha, 0, frame_region)
+
+            frame[y:y+h, x:x+w] = frame_region
+
+        except Exception as e:
+            print(f"添加不带透明通道水印时出错: {e}")
 
     def create_performance_dialog(self):
         """创建性能监控对话框"""

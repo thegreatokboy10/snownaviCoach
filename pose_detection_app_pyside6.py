@@ -252,11 +252,8 @@ class PoseDetectionApp(QMainWindow):
         # 工具栏按钮
         actions = [
             ("📁", "打开视频", self.smart_open_video),
-            ("👤", "关节选择", self.toggle_landmark_selector),
-            ("⚙️", "显示设置", self.toggle_settings),
-            ("🎨", "颜色设置", self.toggle_color_settings),
+            ("⚙️", "显示设置", self.toggle_landmark_selector),
             ("💾", "导出视频", self.toggle_export),
-            ("📊", "性能监控", self.toggle_performance),
             ("❓", "帮助", self.toggle_help),
         ]
         
@@ -445,7 +442,7 @@ class PoseDetectionApp(QMainWindow):
         # 时间标签
         time_label = QLabel("00:00 / 00:00")
         time_label.setStyleSheet("color: #666; font-weight: 500; font-size: 11px;")
-        time_label.setFixedWidth(80)
+        time_label.setMinimumWidth(100)  # 使用最小宽度而不是固定宽度，确保能显示完整时间
         if video_num == 1:
             self.time_label1 = time_label
         else:
@@ -500,6 +497,18 @@ class PoseDetectionApp(QMainWindow):
 
         # 初始化完整配置系统
         self.complete_configs = {}  # 存储完整配置（关节点+显示+颜色）
+
+        # 初始化水印设置
+        self.watermark_enabled = False
+        self.watermark_text = "Pose Analysis"
+        self.watermark_position = "右下角"
+        self.watermark_opacity = 70
+        self.watermark_size = "中"
+
+        # 预览播放状态
+        self.preview_playing = False
+        self.preview_timer = QTimer()
+        self.preview_timer.timeout.connect(self.update_preview_frame)
 
     def initialize_mediapipe(self):
         """初始化MediaPipe"""
@@ -770,25 +779,7 @@ class PoseDetectionApp(QMainWindow):
         else:
             self.landmark_selector_dialog.show()
 
-    def toggle_settings(self):
-        """切换设置"""
-        if not hasattr(self, 'settings_dialog') or self.settings_dialog is None:
-            self.create_settings_dialog()
 
-        if self.settings_dialog.isVisible():
-            self.settings_dialog.hide()
-        else:
-            self.settings_dialog.show()
-
-    def toggle_color_settings(self):
-        """切换颜色设置"""
-        if not hasattr(self, 'color_settings_dialog') or self.color_settings_dialog is None:
-            self.create_color_settings_dialog()
-
-        if self.color_settings_dialog.isVisible():
-            self.color_settings_dialog.hide()
-        else:
-            self.color_settings_dialog.show()
 
     def toggle_export(self):
         """切换导出"""
@@ -796,9 +787,16 @@ class PoseDetectionApp(QMainWindow):
             self.create_export_dialog()
 
         if self.export_dialog.isVisible():
+            # 停止预览播放
+            if hasattr(self, 'preview_playing') and self.preview_playing:
+                self.preview_playing = False
+                self.preview_timer.stop()
             self.export_dialog.hide()
         else:
             self.export_dialog.show()
+            # 刷新预览
+            if hasattr(self, 'refresh_export_preview'):
+                self.refresh_export_preview()
 
     def toggle_performance(self):
         """切换性能监控"""
@@ -820,115 +818,63 @@ class PoseDetectionApp(QMainWindow):
         else:
             self.help_dialog.show()
 
-    def create_settings_dialog(self):
-        """创建设置对话框"""
-        self.settings_dialog = QDialog(self)
-        self.settings_dialog.setWindowTitle("显示设置")
-        self.settings_dialog.setFixedSize(400, 300)
 
-        layout = QVBoxLayout(self.settings_dialog)
-
-        # 标题
-        title_label = QLabel("⚙️ 显示设置")
-        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
-
-        # 线条粗细设置
-        thickness_group = QGroupBox("线条粗细")
-        thickness_layout = QHBoxLayout(thickness_group)
-
-        thickness_layout.addWidget(QLabel("粗细:"))
-        self.settings_thickness_slider = QSlider(Qt.Orientation.Horizontal)
-        self.settings_thickness_slider.setRange(1, 8)
-        self.settings_thickness_slider.setValue(self.line_thickness)
-        self.settings_thickness_slider.valueChanged.connect(self.on_thickness_changed)
-        thickness_layout.addWidget(self.settings_thickness_slider)
-
-        self.settings_thickness_label = QLabel(str(self.line_thickness))
-        thickness_layout.addWidget(self.settings_thickness_label)
-
-        layout.addWidget(thickness_group)
-
-        # 关节点大小设置
-        size_group = QGroupBox("关节点大小")
-        size_layout = QHBoxLayout(size_group)
-
-        size_layout.addWidget(QLabel("大小:"))
-        self.settings_size_slider = QSlider(Qt.Orientation.Horizontal)
-        self.settings_size_slider.setRange(3, 15)
-        self.settings_size_slider.setValue(self.landmark_size)
-        self.settings_size_slider.valueChanged.connect(self.on_size_changed)
-        size_layout.addWidget(self.settings_size_slider)
-
-        self.settings_size_label = QLabel(str(self.landmark_size))
-        size_layout.addWidget(self.settings_size_label)
-
-        layout.addWidget(size_group)
-
-        # 关闭按钮
-        close_btn = ModernButton("关闭", "", "#607D8B")
-        close_btn.clicked.connect(self.settings_dialog.hide)
-        layout.addWidget(close_btn)
-
-    def create_color_settings_dialog(self):
-        """创建颜色设置对话框"""
-        self.color_settings_dialog = QDialog(self)
-        self.color_settings_dialog.setWindowTitle("颜色设置")
-        self.color_settings_dialog.setFixedSize(350, 250)
-
-        layout = QVBoxLayout(self.color_settings_dialog)
-
-        # 标题
-        title_label = QLabel("🎨 颜色设置")
-        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
-
-        # 关键点颜色
-        landmark_group = QGroupBox("关键点颜色")
-        landmark_layout = QHBoxLayout(landmark_group)
-
-        landmark_layout.addWidget(QLabel("颜色:"))
-        self.landmark_color_combo = QComboBox()
-        self.landmark_color_combo.addItems(["绿色", "红色", "蓝色", "黄色", "青色", "白色"])
-        self.landmark_color_combo.setCurrentText("绿色")
-        self.landmark_color_combo.currentTextChanged.connect(self.on_landmark_color_changed)
-        landmark_layout.addWidget(self.landmark_color_combo)
-
-        layout.addWidget(landmark_group)
-
-        # 连接线颜色
-        connection_group = QGroupBox("连接线颜色")
-        connection_layout = QHBoxLayout(connection_group)
-
-        connection_layout.addWidget(QLabel("颜色:"))
-        self.connection_color_combo = QComboBox()
-        self.connection_color_combo.addItems(["红色", "绿色", "蓝色", "黄色", "青色", "白色"])
-        self.connection_color_combo.setCurrentText("红色")
-        self.connection_color_combo.currentTextChanged.connect(self.on_connection_color_changed)
-        connection_layout.addWidget(self.connection_color_combo)
-
-        layout.addWidget(connection_group)
-
-        # 关闭按钮
-        close_btn = ModernButton("关闭", "", "#607D8B")
-        close_btn.clicked.connect(self.color_settings_dialog.hide)
-        layout.addWidget(close_btn)
 
     def create_export_dialog(self):
         """创建导出对话框"""
         self.export_dialog = QDialog(self)
         self.export_dialog.setWindowTitle("导出视频")
-        self.export_dialog.setFixedSize(450, 400)
+        self.export_dialog.setFixedSize(800, 600)  # 增大窗口以容纳预览
 
-        layout = QVBoxLayout(self.export_dialog)
+        # 主布局使用水平分割
+        main_layout = QHBoxLayout(self.export_dialog)
+
+        # 左侧：设置区域
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_widget.setFixedWidth(400)
 
         # 标题
         title_label = QLabel("💾 导出视频")
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title_label)
+        left_layout.addWidget(title_label)
+
+        # 右侧：预览区域
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+
+        # 预览标题
+        preview_title = QLabel("🎬 预览效果")
+        preview_title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_layout.addWidget(preview_title)
+
+        # 预览视频区域
+        self.export_preview_widget = VideoWidget()
+        self.export_preview_widget.setMinimumSize(350, 250)
+        self.export_preview_widget.setText("🎬 点击播放预览\n查看导出效果")
+        right_layout.addWidget(self.export_preview_widget)
+
+        # 预览控制按钮
+        preview_control_layout = QHBoxLayout()
+
+        self.preview_play_btn = ModernButton("播放预览", "▶️", "#4CAF50")
+        self.preview_play_btn.clicked.connect(self.toggle_export_preview)
+        preview_control_layout.addWidget(self.preview_play_btn)
+
+        self.preview_refresh_btn = ModernButton("刷新预览", "🔄", "#2196F3")
+        self.preview_refresh_btn.clicked.connect(self.refresh_export_preview)
+        preview_control_layout.addWidget(self.preview_refresh_btn)
+
+        right_layout.addLayout(preview_control_layout)
+
+        # 添加左右布局
+        main_layout.addWidget(left_widget)
+        main_layout.addWidget(right_widget)
+
+        # 继续使用left_layout作为主要设置布局
+        layout = left_layout
 
         # 视频选择
         video_group = QGroupBox("选择要导出的视频")
@@ -966,6 +912,59 @@ class PoseDetectionApp(QMainWindow):
         settings_layout.addLayout(fps_layout)
 
         layout.addWidget(settings_group)
+
+        # 水印设置
+        watermark_group = QGroupBox("水印设置")
+        watermark_layout = QVBoxLayout(watermark_group)
+
+        # 启用水印
+        self.watermark_enabled_cb = QCheckBox("启用水印")
+        self.watermark_enabled_cb.stateChanged.connect(self.on_watermark_enabled_changed)
+        watermark_layout.addWidget(self.watermark_enabled_cb)
+
+        # 水印文本
+        text_layout = QHBoxLayout()
+        text_layout.addWidget(QLabel("水印文本:"))
+        self.watermark_text_input = QLineEdit()
+        self.watermark_text_input.setPlaceholderText("输入水印文本...")
+        self.watermark_text_input.setText("Pose Analysis")
+        self.watermark_text_input.textChanged.connect(self.on_watermark_text_changed)
+        text_layout.addWidget(self.watermark_text_input)
+        watermark_layout.addLayout(text_layout)
+
+        # 水印位置
+        position_layout = QHBoxLayout()
+        position_layout.addWidget(QLabel("位置:"))
+        self.watermark_position_combo = QComboBox()
+        self.watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
+        self.watermark_position_combo.setCurrentText("右下角")
+        self.watermark_position_combo.currentTextChanged.connect(self.on_watermark_position_changed)
+        position_layout.addWidget(self.watermark_position_combo)
+        watermark_layout.addLayout(position_layout)
+
+        # 水印透明度
+        opacity_layout = QHBoxLayout()
+        opacity_layout.addWidget(QLabel("透明度:"))
+        self.watermark_opacity_slider = QSlider(Qt.Orientation.Horizontal)
+        self.watermark_opacity_slider.setRange(10, 100)
+        self.watermark_opacity_slider.setValue(70)
+        self.watermark_opacity_slider.valueChanged.connect(self.on_watermark_opacity_changed)
+        opacity_layout.addWidget(self.watermark_opacity_slider)
+        self.watermark_opacity_label = QLabel("70%")
+        opacity_layout.addWidget(self.watermark_opacity_label)
+        watermark_layout.addLayout(opacity_layout)
+
+        # 水印大小
+        size_layout = QHBoxLayout()
+        size_layout.addWidget(QLabel("大小:"))
+        self.watermark_size_combo = QComboBox()
+        self.watermark_size_combo.addItems(["小", "中", "大"])
+        self.watermark_size_combo.setCurrentText("中")
+        self.watermark_size_combo.currentTextChanged.connect(self.on_watermark_size_changed)
+        size_layout.addWidget(self.watermark_size_combo)
+        watermark_layout.addLayout(size_layout)
+
+        layout.addWidget(watermark_group)
 
         # 进度显示区域
         progress_group = QGroupBox("导出进度")
@@ -1045,6 +1044,157 @@ class PoseDetectionApp(QMainWindow):
         # 导出取消标志
         self.export_cancelled = False
 
+    def on_watermark_enabled_changed(self, state):
+        """水印启用状态改变"""
+        self.watermark_enabled = (state == Qt.CheckState.Checked.value)
+        # 启用/禁用水印相关控件
+        enabled = self.watermark_enabled
+        self.watermark_text_input.setEnabled(enabled)
+        self.watermark_position_combo.setEnabled(enabled)
+        self.watermark_opacity_slider.setEnabled(enabled)
+        self.watermark_size_combo.setEnabled(enabled)
+
+    def on_watermark_text_changed(self, text):
+        """水印文本改变"""
+        self.watermark_text = text
+
+    def on_watermark_position_changed(self, position):
+        """水印位置改变"""
+        self.watermark_position = position
+
+    def on_watermark_opacity_changed(self, value):
+        """水印透明度改变"""
+        self.watermark_opacity = value
+        self.watermark_opacity_label.setText(f"{value}%")
+
+    def on_watermark_size_changed(self, size):
+        """水印大小改变"""
+        self.watermark_size = size
+
+    def toggle_export_preview(self):
+        """切换导出预览播放"""
+        if not self.cap1:
+            QMessageBox.warning(self.export_dialog, "警告", "请先加载视频")
+            return
+
+        if self.preview_playing:
+            # 停止预览
+            self.preview_playing = False
+            self.preview_timer.stop()
+            self.preview_play_btn.setText("▶️ 播放预览")
+        else:
+            # 开始预览
+            self.preview_playing = True
+            self.preview_timer.start(33)  # 约30fps
+            self.preview_play_btn.setText("⏸️ 停止预览")
+
+    def refresh_export_preview(self):
+        """刷新导出预览"""
+        if self.cap1:
+            # 获取当前帧
+            current_pos = int(self.cap1.get(cv2.CAP_PROP_POS_FRAMES))
+            ret, frame = self.cap1.read()
+            if ret:
+                # 处理姿态检测和水印
+                processed_frame = self.process_frame_for_export(frame)
+                self.display_frame_in_widget(processed_frame, self.export_preview_widget)
+
+                # 恢复视频位置
+                self.cap1.set(cv2.CAP_PROP_POS_FRAMES, current_pos)
+
+    def update_preview_frame(self):
+        """更新预览帧"""
+        try:
+            if not self.preview_playing or not self.cap1:
+                return
+
+            ret, frame = self.cap1.read()
+            if ret:
+                # 处理姿态检测和水印
+                processed_frame = self.process_frame_for_export(frame)
+                self.display_frame_in_widget(processed_frame, self.export_preview_widget)
+            else:
+                # 视频播放完毕，重新开始
+                self.cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+        except Exception as e:
+            print(f"更新预览帧时出错: {e}")
+
+    def process_frame_for_export(self, frame):
+        """处理用于导出的帧（包含姿态检测和水印）"""
+        try:
+            # 首先进行姿态检测
+            processed_frame = self.process_pose_detection(frame)
+
+            # 如果启用水印，添加水印
+            if self.watermark_enabled and self.watermark_text:
+                processed_frame = self.add_watermark(processed_frame)
+
+            return processed_frame
+
+        except Exception as e:
+            print(f"处理导出帧时出错: {e}")
+            return frame
+
+    def add_watermark(self, frame):
+        """添加水印到帧"""
+        try:
+
+            # 获取帧尺寸
+            height, width = frame.shape[:2]
+
+            # 根据大小设置字体缩放
+            size_map = {"小": 0.5, "中": 0.8, "大": 1.2}
+            font_scale = size_map.get(self.watermark_size, 0.8)
+
+            # 调整字体大小基于视频分辨率
+            base_font_scale = min(width, height) / 1000.0
+            font_scale *= base_font_scale
+
+            # 字体设置
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            thickness = max(1, int(font_scale * 2))
+
+            # 获取文本尺寸
+            (text_width, text_height), _ = cv2.getTextSize(
+                self.watermark_text, font, font_scale, thickness
+            )
+
+            # 计算位置
+            margin = 20
+            if self.watermark_position == "右下角":
+                x = width - text_width - margin
+                y = height - margin
+            elif self.watermark_position == "右上角":
+                x = width - text_width - margin
+                y = text_height + margin
+            elif self.watermark_position == "左下角":
+                x = margin
+                y = height - margin
+            elif self.watermark_position == "左上角":
+                x = margin
+                y = text_height + margin
+            else:  # 居中
+                x = (width - text_width) // 2
+                y = (height + text_height) // 2
+
+            # 创建水印图层
+            overlay = frame.copy()
+
+            # 绘制文本
+            cv2.putText(overlay, self.watermark_text, (x, y), font, font_scale,
+                       (255, 255, 255), thickness, cv2.LINE_AA)
+
+            # 应用透明度
+            alpha = self.watermark_opacity / 100.0
+            cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+
+            return frame
+
+        except Exception as e:
+            print(f"添加水印时出错: {e}")
+            return frame
+
     def create_performance_dialog(self):
         """创建性能监控对话框"""
         self.performance_dialog = QDialog(self)
@@ -1095,18 +1245,13 @@ class PoseDetectionApp(QMainWindow):
 • 点击"⏸️ 暂停"暂停播放
 • 拖动进度条跳转到指定位置
 
-👤 关节点选择：
-• 点击"👤 关节选择"打开关节点选择器
-• 可按身体部位分组选择关节点
-• 支持全选、全不选、反选操作
-
 ⚙️ 显示设置：
-• 调整线条粗细（1-8）
-• 调整关节点大小（3-15）
-
-🎨 颜色设置：
-• 自定义关键点颜色
-• 自定义连接线颜色
+• 点击"⚙️ 显示设置"打开完整配置管理器
+• 包含关节点选择、显示参数、颜色设置三个标签页
+• 支持保存和加载完整配置
+• 可按身体部位分组选择关节点
+• 调整线条粗细、关节点大小和形状
+• 自定义关键点和连接线颜色
 
 💡 使用技巧：
 • 所有设置实时生效
@@ -1119,39 +1264,7 @@ class PoseDetectionApp(QMainWindow):
         close_btn.clicked.connect(self.help_dialog.hide)
         layout.addWidget(close_btn)
 
-    def on_thickness_changed(self, value):
-        """线条粗细改变"""
-        self.line_thickness = value
-        self.settings_thickness_label.setText(str(value))
 
-    def on_size_changed(self, value):
-        """关节点大小改变"""
-        self.landmark_size = value
-        self.settings_size_label.setText(str(value))
-
-    def on_landmark_color_changed(self, color_name):
-        """关键点颜色改变"""
-        color_map = {
-            "红色": (0, 0, 255),
-            "绿色": (0, 255, 0),
-            "蓝色": (255, 0, 0),
-            "黄色": (0, 255, 255),
-            "青色": (255, 255, 0),
-            "白色": (255, 255, 255)
-        }
-        self.landmark_color = color_map.get(color_name, (0, 255, 0))
-
-    def on_connection_color_changed(self, color_name):
-        """连接线颜色改变"""
-        color_map = {
-            "红色": (0, 0, 255),
-            "绿色": (0, 255, 0),
-            "蓝色": (255, 0, 0),
-            "黄色": (0, 255, 255),
-            "青色": (255, 255, 0),
-            "白色": (255, 255, 255)
-        }
-        self.connection_color = color_map.get(color_name, (0, 0, 255))
 
     def start_export(self):
         """开始导出视频"""
@@ -1188,26 +1301,38 @@ class PoseDetectionApp(QMainWindow):
                 if self.export_video2_cb.isChecked():
                     total_exports += 1
 
+                # 显示进度区域
+                self.show_export_progress()
+
                 # 导出视频1
-                if self.export_video1_cb.isChecked():
+                if self.export_video1_cb.isChecked() and not self.export_cancelled:
                     export_count += 1
                     self.export_status_label.setText(f"📹 准备导出第 {export_count}/{total_exports} 个视频...")
                     output_path1 = f"{save_dir}/video1_with_pose.mp4"
                     self.export_video_with_pose(self.cap1, output_path1, 1)
 
                 # 导出视频2
-                if self.export_video2_cb.isChecked():
+                if self.export_video2_cb.isChecked() and not self.export_cancelled:
                     export_count += 1
                     self.export_status_label.setText(f"📹 准备导出第 {export_count}/{total_exports} 个视频...")
                     output_path2 = f"{save_dir}/video2_with_pose.mp4"
                     self.export_video_with_pose(self.cap2, output_path2, 2)
 
+                # 隐藏进度区域
+                self.hide_export_progress()
+
                 # 全部完成
-                if total_exports > 1:
+                if total_exports > 1 and not self.export_cancelled:
                     QMessageBox.information(
                         self.export_dialog,
                         "批量导出完成",
                         f"🎉 所有 {total_exports} 个视频已成功导出到:\n{save_dir}"
+                    )
+                elif self.export_cancelled:
+                    QMessageBox.information(
+                        self.export_dialog,
+                        "导出已取消",
+                        "❌ 批量导出已被用户取消"
                     )
             else:
                 # 导出单个视频，选择文件名
@@ -1220,13 +1345,51 @@ class PoseDetectionApp(QMainWindow):
                 if not output_path:
                     return
 
+                # 显示进度区域
+                self.show_export_progress()
+
                 if self.export_video1_cb.isChecked():
                     self.export_video_with_pose(self.cap1, output_path, 1)
                 else:
                     self.export_video_with_pose(self.cap2, output_path, 2)
 
+                # 检查是否被取消
+                if self.export_cancelled:
+                    QMessageBox.information(
+                        self.export_dialog,
+                        "导出已取消",
+                        "❌ 视频导出已被用户取消"
+                    )
+
+                # 隐藏进度区域
+                self.hide_export_progress()
+
         except Exception as e:
+            # 隐藏进度区域
+            self.hide_export_progress()
             QMessageBox.critical(self.export_dialog, "错误", f"导出失败: {str(e)}")
+
+    def show_export_progress(self):
+        """显示导出进度区域"""
+        self.export_progress_group.setVisible(True)
+        self.export_start_btn.setVisible(False)
+        self.export_cancel_btn.setVisible(True)
+        self.export_cancelled = False
+
+        # 停止预览播放但保持预览窗口可见
+        if hasattr(self, 'preview_playing') and self.preview_playing:
+            self.preview_playing = False
+            self.preview_timer.stop()
+            self.preview_play_btn.setText("▶️ 播放预览")
+
+        # 强制更新UI
+        QApplication.processEvents()
+
+    def hide_export_progress(self):
+        """隐藏导出进度区域"""
+        self.export_progress_group.setVisible(False)
+        self.export_start_btn.setVisible(True)
+        self.export_cancel_btn.setVisible(False)
 
     def export_video_with_pose(self, cap, output_path, video_num):
         """导出带姿态检测的视频"""
@@ -1237,11 +1400,7 @@ class PoseDetectionApp(QMainWindow):
                 QMessageBox.critical(self.export_dialog, "错误", f"视频{video_num}未正确加载")
                 return
 
-            # 显示进度区域和取消按钮
-            self.export_progress_group.setVisible(True)
-            self.export_start_btn.setVisible(False)
-            self.export_cancel_btn.setVisible(True)
-            self.export_cancelled = False
+            # 设置导出状态
             self.export_status_label.setText(f"🎬 正在准备导出视频{video_num}...")
 
             # 获取视频信息
@@ -1268,6 +1427,9 @@ class PoseDetectionApp(QMainWindow):
             self.export_progress.setValue(0)
             self.export_progress.setVisible(True)
 
+            # 立即更新UI显示进度条
+            QApplication.processEvents()
+
             # 时间跟踪
             start_time = time.time()
             frame_count = 0
@@ -1279,6 +1441,13 @@ class PoseDetectionApp(QMainWindow):
             self.eta_label.setText("预计剩余: 计算中...")
             self.export_status_label.setText(f"🎬 正在导出视频{video_num}...")
 
+            # 确保对话框保持在前台
+            self.export_dialog.raise_()
+            self.export_dialog.activateWindow()
+
+            # 立即更新UI
+            QApplication.processEvents()
+
             while True:
                 # 检查是否取消导出
                 if self.export_cancelled:
@@ -1289,8 +1458,12 @@ class PoseDetectionApp(QMainWindow):
                 if not ret:
                     break
 
-                # 处理姿态检测
-                processed_frame = self.process_pose_detection(frame)
+                # 再次检查是否取消（在处理帧之前）
+                if self.export_cancelled:
+                    break
+
+                # 处理姿态检测和水印
+                processed_frame = self.process_frame_for_export(frame)
 
                 # 写入帧
                 out.write(processed_frame)
@@ -1300,6 +1473,12 @@ class PoseDetectionApp(QMainWindow):
 
                 # 每处理10帧或每秒更新一次进度（避免过于频繁的UI更新）
                 if frame_count % 10 == 0 or (current_time - last_update_time) >= 1.0:
+                    # 检查是否取消
+                    if self.export_cancelled:
+                        break
+
+                    # 更新预览显示当前处理的帧
+                    self.display_frame_in_widget(processed_frame, self.export_preview_widget)
                     # 更新进度条
                     self.export_progress.setValue(frame_count)
 
@@ -1348,6 +1527,19 @@ class PoseDetectionApp(QMainWindow):
             # 清理
             out.release()
 
+            # 检查是否被取消
+            if self.export_cancelled:
+                # 删除未完成的文件
+                try:
+                    import os
+                    if os.path.exists(output_path):
+                        os.remove(output_path)
+                        self.export_status_label.setText("❌ 导出已取消，文件已删除")
+                except Exception as e:
+                    print(f"删除未完成文件时出错: {e}")
+                    self.export_status_label.setText("❌ 导出已取消")
+                return  # 直接返回，不执行后续的完成逻辑
+
             # 计算总耗时
             total_time = time.time() - start_time
             total_time_text = self.format_eta(total_time)
@@ -1359,9 +1551,7 @@ class PoseDetectionApp(QMainWindow):
             self.eta_label.setText(f"总耗时: {total_time_text}")
             self.export_status_label.setText(f"✅ 视频{video_num}导出完成！")
 
-            # 重新显示开始按钮，隐藏取消按钮
-            self.export_start_btn.setVisible(True)
-            self.export_cancel_btn.setVisible(False)
+            # 注意：不在这里隐藏进度区域，由调用方控制
 
             # 显示完成消息
             QMessageBox.information(
@@ -1375,9 +1565,6 @@ class PoseDetectionApp(QMainWindow):
 
         except Exception as e:
             # 错误处理
-            self.export_progress_group.setVisible(False)
-            self.export_start_btn.setVisible(True)
-            self.export_cancel_btn.setVisible(False)
             self.export_status_label.setText("❌ 导出失败")
             raise e
 
@@ -1438,10 +1625,11 @@ class PoseDetectionApp(QMainWindow):
             self.export_cancelled = True
             self.export_status_label.setText("⏹️ 正在取消导出...")
 
-            # 恢复按钮状态
-            self.export_start_btn.setVisible(True)
-            self.export_cancel_btn.setVisible(False)
-            self.export_progress_group.setVisible(False)
+            # 强制更新UI显示取消状态
+            QApplication.processEvents()
+
+            # 稍等一下让用户看到取消状态
+            QTimer.singleShot(1000, self.hide_export_progress)
 
     def toggle_playback1(self):
         """切换视频1播放状态"""

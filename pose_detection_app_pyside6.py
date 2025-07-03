@@ -398,6 +398,17 @@ class PoseDetectionApp(QMainWindow):
             play_button.clicked.connect(self.toggle_playback2)
         control_layout.addWidget(play_button)
 
+        # 旋转按钮
+        rotate_button = ModernButton("", "🔄", "#FF9800")
+        rotate_button.setFixedSize(40, 30)
+        if video_num == 1:
+            self.rotate_button1 = rotate_button
+            rotate_button.clicked.connect(self.rotate_video1)
+        else:
+            self.rotate_button2 = rotate_button
+            rotate_button.clicked.connect(self.rotate_video2)
+        control_layout.addWidget(rotate_button)
+
         # 进度条
         progress_slider = QSlider(Qt.Orientation.Horizontal)
         progress_slider.setMinimum(0)
@@ -499,9 +510,9 @@ class PoseDetectionApp(QMainWindow):
         self.complete_configs = {}  # 存储完整配置（关节点+显示+颜色）
 
         # 初始化水印设置
-        self.watermark_enabled = False
+        self.watermark_enabled = True  # 默认启用水印
         self.watermark_type = "文字水印"
-        self.watermark_text = "Pose Analysis"
+        self.watermark_text = "SnowNavi Pose Analyzer"  # 默认文字
         self.watermark_image_path = "snownavi_logo.png"
         self.watermark_position = "右下角"
         self.watermark_opacity = 70
@@ -511,6 +522,14 @@ class PoseDetectionApp(QMainWindow):
         self.preview_playing = False
         self.preview_timer = QTimer()
         self.preview_timer.timeout.connect(self.update_preview_frame)
+
+        # 视频旋转状态 (0=0°, 1=90°, 2=180°, 3=270°)
+        self.video1_rotation = 0
+        self.video2_rotation = 0
+
+        # 导出时的旋转设置（可以与播放时不同）
+        self.export_video1_rotation = 0
+        self.export_video2_rotation = 0
 
     def initialize_mediapipe(self):
         """初始化MediaPipe"""
@@ -575,6 +594,10 @@ class PoseDetectionApp(QMainWindow):
                 # 打开新视频
                 self.cap1 = cv2.VideoCapture(file_path)
                 if self.cap1.isOpened():
+                    # 存储原始视频路径（用于音频提取）
+                    self.video1_path = file_path
+                    # 重置旋转设置
+                    self.video1_rotation = 0
                     # 获取视频信息
                     self.total_frames1 = int(self.cap1.get(cv2.CAP_PROP_FRAME_COUNT))
                     self.fps1 = self.cap1.get(cv2.CAP_PROP_FPS)
@@ -600,7 +623,7 @@ class PoseDetectionApp(QMainWindow):
                     # 更新时间显示
                     self.update_time_display1()
 
-                    self.update_status(f"视频1加载成功: {os.path.basename(file_path)}")
+                    self.update_status(f"视频1加载成功: {os.path.basename(file_path)} (旋转已重置)")
                     return True
                 else:
                     QMessageBox.critical(self, "错误", "无法打开视频文件")
@@ -627,6 +650,10 @@ class PoseDetectionApp(QMainWindow):
                 # 打开新视频
                 self.cap2 = cv2.VideoCapture(file_path)
                 if self.cap2.isOpened():
+                    # 存储原始视频路径（用于音频提取）
+                    self.video2_path = file_path
+                    # 重置旋转设置
+                    self.video2_rotation = 0
                     # 获取视频信息
                     self.total_frames2 = int(self.cap2.get(cv2.CAP_PROP_FRAME_COUNT))
                     self.fps2 = self.cap2.get(cv2.CAP_PROP_FPS)
@@ -656,7 +683,7 @@ class PoseDetectionApp(QMainWindow):
                     # 更新时间显示
                     self.update_time_display2()
 
-                    self.update_status(f"视频2加载成功，启用比较模式: {os.path.basename(file_path)}")
+                    self.update_status(f"视频2加载成功，启用比较模式: {os.path.basename(file_path)} (旋转已重置)")
                     return True
                 else:
                     QMessageBox.critical(self, "错误", "无法打开视频文件")
@@ -729,10 +756,19 @@ class PoseDetectionApp(QMainWindow):
             # 获取原始帧尺寸
             frame_height, frame_width = frame.shape[:2]
 
-            # 计算缩放比例，保持宽高比
-            scale_x = widget_width / frame_width
-            scale_y = widget_height / frame_height
-            scale = min(scale_x, scale_y) * 0.95  # 留5%边距
+            # 计算帧的宽高比
+            frame_aspect_ratio = frame_width / frame_height
+
+            # 根据帧的宽高比决定显示方向和缩放策略
+            if frame_aspect_ratio > 1.5:  # 横屏视频 (宽高比 > 1.5)
+                # 横屏视频，优先适应宽度
+                scale = min(widget_width / frame_width, widget_height / frame_height) * 0.95
+            elif frame_aspect_ratio < 0.7:  # 竖屏视频 (宽高比 < 0.7)
+                # 竖屏视频，优先适应高度
+                scale = min(widget_height / frame_height, widget_width / frame_width) * 0.95
+            else:  # 接近正方形的视频
+                # 正方形视频，按比例缩放
+                scale = min(widget_width / frame_width, widget_height / frame_height) * 0.95
 
             # 计算新尺寸
             new_width = int(frame_width * scale)
@@ -796,9 +832,10 @@ class PoseDetectionApp(QMainWindow):
             self.export_dialog.hide()
         else:
             self.export_dialog.show()
-            # 刷新预览
+            # 刷新预览，确保显示当前旋转状态
             if hasattr(self, 'refresh_export_preview'):
-                self.refresh_export_preview()
+                # 稍微延迟刷新，确保对话框完全显示
+                QTimer.singleShot(100, self.refresh_export_preview)
 
     def toggle_performance(self):
         """切换性能监控"""
@@ -826,21 +863,34 @@ class PoseDetectionApp(QMainWindow):
         """创建导出对话框"""
         self.export_dialog = QDialog(self)
         self.export_dialog.setWindowTitle("导出视频")
-        self.export_dialog.setFixedSize(800, 600)  # 增大窗口以容纳预览
+        self.export_dialog.setFixedSize(900, 700)  # 增大窗口以容纳更多内容
 
         # 主布局使用水平分割
         main_layout = QHBoxLayout(self.export_dialog)
 
         # 左侧：设置区域
         left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
-        left_widget.setFixedWidth(400)
+        left_main_layout = QVBoxLayout(left_widget)
+        left_widget.setFixedWidth(450)
 
         # 标题
         title_label = QLabel("💾 导出视频")
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        left_layout.addWidget(title_label)
+        left_main_layout.addWidget(title_label)
+
+        # 滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # 滚动区域内的widget
+        scroll_widget = QWidget()
+        left_layout = QVBoxLayout(scroll_widget)
+
+        scroll_area.setWidget(scroll_widget)
+        left_main_layout.addWidget(scroll_area)
 
         # 右侧：预览区域
         right_widget = QWidget()
@@ -887,6 +937,13 @@ class PoseDetectionApp(QMainWindow):
         video_layout.addWidget(self.export_video1_cb)
 
         self.export_video2_cb = QCheckBox("导出视频2（带姿态检测）")
+        # 只有在视频2加载时才启用和选中
+        if hasattr(self, 'cap2') and self.cap2 is not None:
+            self.export_video2_cb.setEnabled(True)
+            self.export_video2_cb.setChecked(True)
+        else:
+            self.export_video2_cb.setEnabled(False)
+            self.export_video2_cb.setChecked(False)
         video_layout.addWidget(self.export_video2_cb)
 
         layout.addWidget(video_group)
@@ -915,12 +972,45 @@ class PoseDetectionApp(QMainWindow):
 
         layout.addWidget(settings_group)
 
+        # 旋转设置
+        rotation_group = QGroupBox("旋转设置")
+        rotation_layout = QVBoxLayout(rotation_group)
+
+        # 视频1旋转
+        if hasattr(self, 'cap1') and self.cap1 is not None:
+            video1_rotation_layout = QHBoxLayout()
+            video1_rotation_layout.addWidget(QLabel("视频1旋转:"))
+            self.video1_rotation_combo = QComboBox()
+            self.video1_rotation_combo.addItems(["0°", "90°", "180°", "270°"])
+            # 初始化为当前播放旋转角度
+            self.export_video1_rotation = self.video1_rotation
+            self.video1_rotation_combo.setCurrentIndex(self.export_video1_rotation)
+            self.video1_rotation_combo.currentIndexChanged.connect(self.on_export_video1_rotation_changed)
+            video1_rotation_layout.addWidget(self.video1_rotation_combo)
+            rotation_layout.addLayout(video1_rotation_layout)
+
+        # 视频2旋转
+        if hasattr(self, 'cap2') and self.cap2 is not None:
+            video2_rotation_layout = QHBoxLayout()
+            video2_rotation_layout.addWidget(QLabel("视频2旋转:"))
+            self.video2_rotation_combo = QComboBox()
+            self.video2_rotation_combo.addItems(["0°", "90°", "180°", "270°"])
+            # 初始化为当前播放旋转角度
+            self.export_video2_rotation = self.video2_rotation
+            self.video2_rotation_combo.setCurrentIndex(self.export_video2_rotation)
+            self.video2_rotation_combo.currentIndexChanged.connect(self.on_export_video2_rotation_changed)
+            video2_rotation_layout.addWidget(self.video2_rotation_combo)
+            rotation_layout.addLayout(video2_rotation_layout)
+
+        layout.addWidget(rotation_group)
+
         # 水印设置
         watermark_group = QGroupBox("水印设置")
         watermark_layout = QVBoxLayout(watermark_group)
 
         # 启用水印
         self.watermark_enabled_cb = QCheckBox("启用水印")
+        self.watermark_enabled_cb.setChecked(self.watermark_enabled)  # 使用默认值
         self.watermark_enabled_cb.stateChanged.connect(self.on_watermark_enabled_changed)
         watermark_layout.addWidget(self.watermark_enabled_cb)
 
@@ -943,7 +1033,7 @@ class PoseDetectionApp(QMainWindow):
         text_layout.addWidget(QLabel("水印文本:"))
         self.watermark_text_input = QLineEdit()
         self.watermark_text_input.setPlaceholderText("输入水印文本...")
-        self.watermark_text_input.setText("Pose Analysis")
+        self.watermark_text_input.setText(self.watermark_text)  # 使用默认文字
         self.watermark_text_input.textChanged.connect(self.on_watermark_text_changed)
         text_layout.addWidget(self.watermark_text_input)
         text_watermark_layout.addLayout(text_layout)
@@ -1098,23 +1188,38 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_position_combo.setEnabled(enabled)
         self.watermark_opacity_slider.setEnabled(enabled)
         self.watermark_size_combo.setEnabled(enabled)
+        # 刷新预览以显示水印启用/禁用效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def on_watermark_text_changed(self, text):
         """水印文本改变"""
         self.watermark_text = text
+        # 刷新预览以显示新的水印效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def on_watermark_position_changed(self, position):
         """水印位置改变"""
         self.watermark_position = position
+        # 刷新预览以显示新的水印效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def on_watermark_opacity_changed(self, value):
         """水印透明度改变"""
         self.watermark_opacity = value
         self.watermark_opacity_label.setText(f"{value}%")
+        # 刷新预览以显示新的水印效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def on_watermark_size_changed(self, size):
         """水印大小改变"""
         self.watermark_size = size
+        # 刷新预览以显示新的水印效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def on_watermark_type_changed(self, watermark_type):
         """水印类型改变"""
@@ -1134,9 +1239,16 @@ class PoseDetectionApp(QMainWindow):
             if self.watermark_position_combo.currentText() == "右下角":
                 self.watermark_position_combo.setCurrentText("左下角")
 
+        # 刷新预览以显示新的水印类型效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
+
     def on_watermark_image_changed(self, image_path):
         """水印图片路径改变"""
         self.watermark_image_path = image_path
+        # 刷新预览以显示新的水印效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def browse_watermark_image(self):
         """浏览选择水印图片"""
@@ -1149,10 +1261,40 @@ class PoseDetectionApp(QMainWindow):
         if file_path:
             self.watermark_image_input.setText(file_path)
             self.watermark_image_path = file_path
+            # 刷新预览以显示新的水印效果
+            if hasattr(self, 'export_preview_widget'):
+                self.refresh_export_preview()
+
+    def on_export_video1_rotation_changed(self, index):
+        """导出时视频1旋转设置改变"""
+        # 为导出单独设置旋转，不影响播放显示
+        self.export_video1_rotation = index
+        self.update_status(f"导出视频1旋转设置: {index * 90}°")
+        # 刷新预览以显示新的旋转效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
+
+    def on_export_video2_rotation_changed(self, index):
+        """导出时视频2旋转设置改变"""
+        # 为导出单独设置旋转，不影响播放显示
+        self.export_video2_rotation = index
+        self.update_status(f"导出视频2旋转设置: {index * 90}°")
+        # 刷新预览以显示新的旋转效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
 
     def toggle_export_preview(self):
         """切换导出预览播放"""
-        if not self.cap1:
+        # 检查是否有可预览的视频
+        has_video = False
+        if hasattr(self, 'export_video1_cb') and self.export_video1_cb.isChecked() and self.cap1:
+            has_video = True
+        elif hasattr(self, 'export_video2_cb') and self.export_video2_cb.isChecked() and self.cap2:
+            has_video = True
+        elif self.cap1 or self.cap2:
+            has_video = True
+
+        if not has_video:
             QMessageBox.warning(self.export_dialog, "警告", "请先加载视频")
             return
 
@@ -1169,41 +1311,86 @@ class PoseDetectionApp(QMainWindow):
 
     def refresh_export_preview(self):
         """刷新导出预览"""
-        if self.cap1:
+        # 确定预览哪个视频（优先视频1，如果没有则视频2）
+        preview_cap = None
+        preview_video_num = 1
+
+        if hasattr(self, 'export_video1_cb') and self.export_video1_cb.isChecked() and self.cap1:
+            preview_cap = self.cap1
+            preview_video_num = 1
+        elif hasattr(self, 'export_video2_cb') and self.export_video2_cb.isChecked() and self.cap2:
+            preview_cap = self.cap2
+            preview_video_num = 2
+        elif self.cap1:  # 默认预览视频1
+            preview_cap = self.cap1
+            preview_video_num = 1
+        elif self.cap2:  # 如果视频1不存在，预览视频2
+            preview_cap = self.cap2
+            preview_video_num = 2
+
+        if preview_cap:
             # 获取当前帧
-            current_pos = int(self.cap1.get(cv2.CAP_PROP_POS_FRAMES))
-            ret, frame = self.cap1.read()
+            current_pos = int(preview_cap.get(cv2.CAP_PROP_POS_FRAMES))
+            ret, frame = preview_cap.read()
             if ret:
                 # 处理姿态检测和水印
-                processed_frame = self.process_frame_for_export(frame)
+                processed_frame = self.process_frame_for_export(frame, preview_video_num)
                 self.display_frame_in_widget(processed_frame, self.export_preview_widget)
 
                 # 恢复视频位置
-                self.cap1.set(cv2.CAP_PROP_POS_FRAMES, current_pos)
+                preview_cap.set(cv2.CAP_PROP_POS_FRAMES, current_pos)
 
     def update_preview_frame(self):
         """更新预览帧"""
         try:
-            if not self.preview_playing or not self.cap1:
+            if not self.preview_playing:
                 return
 
-            ret, frame = self.cap1.read()
+            # 确定预览哪个视频（优先视频1，如果没有则视频2）
+            preview_cap = None
+            preview_video_num = 1
+
+            if hasattr(self, 'export_video1_cb') and self.export_video1_cb.isChecked() and self.cap1:
+                preview_cap = self.cap1
+                preview_video_num = 1
+            elif hasattr(self, 'export_video2_cb') and self.export_video2_cb.isChecked() and self.cap2:
+                preview_cap = self.cap2
+                preview_video_num = 2
+            elif self.cap1:  # 默认预览视频1
+                preview_cap = self.cap1
+                preview_video_num = 1
+            elif self.cap2:  # 如果视频1不存在，预览视频2
+                preview_cap = self.cap2
+                preview_video_num = 2
+
+            if not preview_cap:
+                return
+
+            ret, frame = preview_cap.read()
             if ret:
                 # 处理姿态检测和水印
-                processed_frame = self.process_frame_for_export(frame)
+                processed_frame = self.process_frame_for_export(frame, preview_video_num)
                 self.display_frame_in_widget(processed_frame, self.export_preview_widget)
             else:
                 # 视频播放完毕，重新开始
-                self.cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                preview_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
         except Exception as e:
             print(f"更新预览帧时出错: {e}")
 
-    def process_frame_for_export(self, frame):
-        """处理用于导出的帧（包含姿态检测和水印）"""
+    def process_frame_for_export(self, frame, video_num=1):
+        """处理用于导出的帧（包含旋转、姿态检测和水印）"""
         try:
-            # 首先进行姿态检测
-            processed_frame = self.process_pose_detection(frame)
+            # 首先应用旋转（使用导出旋转设置）
+            if video_num == 1:
+                rotation = getattr(self, 'export_video1_rotation', self.video1_rotation)
+                rotated_frame = self.rotate_frame(frame, rotation)
+            else:
+                rotation = getattr(self, 'export_video2_rotation', self.video2_rotation)
+                rotated_frame = self.rotate_frame(frame, rotation)
+
+            # 然后进行姿态检测
+            processed_frame = self.process_pose_detection(rotated_frame)
 
             # 如果启用水印，添加水印
             if self.watermark_enabled:
@@ -1268,7 +1455,7 @@ class PoseDetectionApp(QMainWindow):
                        (255, 255, 255), thickness, cv2.LINE_AA)
 
             # 应用透明度
-            alpha = self.watermark_opacity / 100.0
+            alpha = getattr(self, 'watermark_opacity', 80) / 100.0
             cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
 
             return frame
@@ -1297,24 +1484,24 @@ class PoseDetectionApp(QMainWindow):
             frame_height, frame_width = frame.shape[:2]
 
             # 根据大小设置调整水印尺寸
-            size_map = {"小": 0.05, "中": 0.08, "大": 0.12}
-            scale_factor = size_map.get(self.watermark_size, 0.08)
+            size_map = {"小": 0.08, "中": 0.12, "大": 0.18}  # 增大尺寸避免过小
+            scale_factor = size_map.get(getattr(self, 'watermark_size', '中'), 0.12)
 
             # 计算水印大小（基于帧的较小边）
             base_size = min(frame_width, frame_height)
             watermark_width = int(base_size * scale_factor)
 
             # 保持水印图片的宽高比
-            if len(watermark_img.shape) == 3:
-                wm_h, wm_w = watermark_img.shape[:2]
-            else:
-                wm_h, wm_w = watermark_img.shape
-
+            wm_h, wm_w = watermark_img.shape[:2]
             aspect_ratio = wm_h / wm_w
             watermark_height = int(watermark_width * aspect_ratio)
 
-            # 调整水印图片大小
-            watermark_resized = cv2.resize(watermark_img, (watermark_width, watermark_height))
+            # 使用高质量插值调整水印图片大小
+            watermark_resized = cv2.resize(
+                watermark_img,
+                (watermark_width, watermark_height),
+                interpolation=cv2.INTER_LANCZOS4  # 使用高质量插值
+            )
 
             # 计算水印位置
             margin = 20
@@ -1339,7 +1526,7 @@ class PoseDetectionApp(QMainWindow):
             y = max(0, min(y, frame_height - watermark_height))
 
             # 添加水印到帧
-            if len(watermark_resized.shape) == 4:  # 带透明通道的PNG
+            if watermark_resized.shape[2] == 4:  # 带透明通道的PNG
                 self.add_watermark_with_alpha(frame, watermark_resized, x, y)
             else:  # 不带透明通道的图片
                 self.add_watermark_without_alpha(frame, watermark_resized, x, y)
@@ -1355,47 +1542,87 @@ class PoseDetectionApp(QMainWindow):
         try:
             h, w = watermark.shape[:2]
 
-            # 提取RGB和Alpha通道
-            watermark_rgb = watermark[:, :, :3]
-            watermark_alpha = watermark[:, :, 3] / 255.0
+            # 确保帧是3通道
+            if len(frame.shape) == 2:
+                frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+
+            # 提取BGR和Alpha通道
+            if len(watermark.shape) == 3 and watermark.shape[2] == 4:
+                watermark_bgr = watermark[:, :, :3]
+                watermark_alpha = watermark[:, :, 3] / 255.0
+            else:
+                print(f"警告: 水印图片不是4通道BGRA格式: {watermark.shape}")
+                return
 
             # 应用透明度设置
-            alpha_factor = self.watermark_opacity / 100.0
+            alpha_factor = getattr(self, 'watermark_opacity', 80) / 100.0
             watermark_alpha = watermark_alpha * alpha_factor
 
             # 获取帧的对应区域
             frame_region = frame[y:y+h, x:x+w]
 
-            # 混合图像
-            for c in range(3):
-                frame_region[:, :, c] = (
-                    watermark_alpha * watermark_rgb[:, :, c] +
-                    (1 - watermark_alpha) * frame_region[:, :, c]
-                )
+            # 确保尺寸匹配
+            if frame_region.shape[:2] != (h, w):
+                watermark_bgr = cv2.resize(watermark_bgr, (frame_region.shape[1], frame_region.shape[0]), interpolation=cv2.INTER_LANCZOS4)
+                watermark_alpha = cv2.resize(watermark_alpha, (frame_region.shape[1], frame_region.shape[0]), interpolation=cv2.INTER_LANCZOS4)
+                h, w = frame_region.shape[:2]
 
-            frame[y:y+h, x:x+w] = frame_region
+            # 确保frame_region是3通道
+            if len(frame_region.shape) == 2:
+                frame_region = cv2.cvtColor(frame_region, cv2.COLOR_GRAY2BGR)
+
+            # 使用向量化操作进行alpha混合，提高性能和质量
+            alpha_3d = watermark_alpha[:, :, np.newaxis]
+            blended = watermark_bgr * alpha_3d + frame_region * (1 - alpha_3d)
+
+            frame[y:y+h, x:x+w] = blended.astype(np.uint8)
 
         except Exception as e:
             print(f"添加带透明通道水印时出错: {e}")
+            print(f"帧形状: {frame.shape}, 水印形状: {watermark.shape}")
+            print(f"位置: ({x}, {y}), 尺寸: ({w}, {h})")
 
     def add_watermark_without_alpha(self, frame, watermark, x, y):
         """添加不带透明通道的水印"""
         try:
             h, w = watermark.shape[:2]
 
+            # 确保水印和帧有相同的通道数
+            if len(watermark.shape) == 2:  # 灰度图
+                watermark = cv2.cvtColor(watermark, cv2.COLOR_GRAY2BGR)
+            elif len(watermark.shape) == 3 and watermark.shape[2] == 4:  # BGRA
+                watermark = cv2.cvtColor(watermark, cv2.COLOR_BGRA2BGR)
+
+            # 确保帧也是3通道
+            if len(frame.shape) == 2:
+                frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+
             # 应用透明度
-            alpha = self.watermark_opacity / 100.0
+            alpha = getattr(self, 'watermark_opacity', 80) / 100.0
 
             # 获取帧的对应区域
             frame_region = frame[y:y+h, x:x+w]
 
-            # 混合图像
-            cv2.addWeighted(watermark, alpha, frame_region, 1 - alpha, 0, frame_region)
+            # 确保尺寸匹配
+            if frame_region.shape[:2] != watermark.shape[:2]:
+                watermark = cv2.resize(watermark, (frame_region.shape[1], frame_region.shape[0]))
 
-            frame[y:y+h, x:x+w] = frame_region
+            # 确保通道数匹配
+            if len(frame_region.shape) == 3 and len(watermark.shape) == 3:
+                if frame_region.shape[2] != watermark.shape[2]:
+                    if watermark.shape[2] == 1:
+                        watermark = cv2.cvtColor(watermark, cv2.COLOR_GRAY2BGR)
+                    elif watermark.shape[2] == 4:
+                        watermark = cv2.cvtColor(watermark, cv2.COLOR_BGRA2BGR)
+
+            # 混合图像
+            blended = cv2.addWeighted(watermark, alpha, frame_region, 1 - alpha, 0)
+            frame[y:y+h, x:x+w] = blended
 
         except Exception as e:
             print(f"添加不带透明通道水印时出错: {e}")
+            print(f"帧形状: {frame.shape}, 水印形状: {watermark.shape}")
+            print(f"位置: ({x}, {y}), 尺寸: ({w}, {h})")
 
     def create_performance_dialog(self):
         """创建性能监控对话框"""
@@ -1608,18 +1835,42 @@ class PoseDetectionApp(QMainWindow):
             # 获取视频信息
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             fps = cap.get(cv2.CAP_PROP_FPS)
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            # 根据旋转角度计算输出视频尺寸
+            if video_num == 1:
+                rotation = getattr(self, 'export_video1_rotation', self.video1_rotation)
+            else:
+                rotation = getattr(self, 'export_video2_rotation', self.video2_rotation)
+
+            # 90度和270度旋转会交换宽高
+            if rotation == 1 or rotation == 3:  # 90度或270度
+                output_width = original_height
+                output_height = original_width
+            else:  # 0度或180度
+                output_width = original_width
+                output_height = original_height
 
             # 根据设置调整参数
             output_fps = self.get_output_fps(fps)
 
-            # 创建视频写入器
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(output_path, fourcc, output_fps, (width, height))
+            # 创建视频写入器，使用旋转后的尺寸
+            # 尝试使用更兼容的编码器
+            fourcc = cv2.VideoWriter_fourcc(*'H264')
+            out = cv2.VideoWriter(output_path, fourcc, output_fps, (output_width, output_height))
+
+            # 如果H264失败，尝试使用mp4v
+            if not out.isOpened():
+                print("H264编码器失败，尝试使用mp4v编码器")
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                out = cv2.VideoWriter(output_path, fourcc, output_fps, (output_width, output_height))
 
             if not out.isOpened():
-                raise Exception("无法创建输出视频文件")
+                raise Exception(f"无法创建输出视频文件。尺寸: {output_width}x{output_height}, FPS: {output_fps}")
+
+            # 调试信息
+            print(f"导出视频{video_num}: 原始尺寸 {original_width}x{original_height}, 旋转角度 {rotation*90}°, 输出尺寸 {output_width}x{output_height}")
 
             # 重置视频到开头
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -1665,7 +1916,14 @@ class PoseDetectionApp(QMainWindow):
                     break
 
                 # 处理姿态检测和水印
-                processed_frame = self.process_frame_for_export(frame)
+                processed_frame = self.process_frame_for_export(frame, video_num)
+
+                # 验证帧尺寸是否与VideoWriter期望的尺寸一致
+                frame_height, frame_width = processed_frame.shape[:2]
+                if frame_width != output_width or frame_height != output_height:
+                    print(f"警告: 帧尺寸不匹配! 期望: {output_width}x{output_height}, 实际: {frame_width}x{frame_height}")
+                    # 调整帧尺寸以匹配VideoWriter
+                    processed_frame = cv2.resize(processed_frame, (output_width, output_height))
 
                 # 写入帧
                 out.write(processed_frame)
@@ -1755,14 +2013,29 @@ class PoseDetectionApp(QMainWindow):
 
             # 注意：不在这里隐藏进度区域，由调用方控制
 
+            # 添加音频到导出的视频
+            self.export_status_label.setText(f"🎵 正在添加音频到视频{video_num}...")
+            QApplication.processEvents()
+
+            final_output_path = self.add_audio_to_video(output_path, video_num)
+
+            # 验证导出的文件
+            import os
+            file_size = os.path.getsize(final_output_path) if os.path.exists(final_output_path) else 0
+            file_size_mb = file_size / (1024 * 1024)
+
             # 显示完成消息
             QMessageBox.information(
                 self.export_dialog,
                 "导出完成",
                 f"🎉 视频{video_num}已成功导出！\n\n"
-                f"📁 保存位置: {output_path}\n"
+                f"📁 保存位置: {final_output_path}\n"
                 f"⏱️ 总耗时: {total_time_text}\n"
-                f"🎬 总帧数: {total_frames} 帧"
+                f"🎬 总帧数: {total_frames} 帧\n"
+                f"📊 文件大小: {file_size_mb:.1f} MB\n"
+                f"🔄 旋转角度: {rotation * 90}°\n"
+                f"📐 输出尺寸: {output_width}x{output_height}\n"
+                f"🎵 音频: 已包含原始音频"
             )
 
         except Exception as e:
@@ -1812,6 +2085,137 @@ class PoseDetectionApp(QMainWindow):
         if target_fps >= original_fps:
             return 1
         return int(original_fps / target_fps)
+
+    def rotate_video1(self):
+        """旋转视频1"""
+        self.video1_rotation = (self.video1_rotation + 1) % 4
+        self.update_status(f"视频1已旋转 {self.video1_rotation * 90}°")
+        # 立即更新显示
+        self.update_current_frame_display()
+
+    def rotate_video2(self):
+        """旋转视频2"""
+        self.video2_rotation = (self.video2_rotation + 1) % 4
+        self.update_status(f"视频2已旋转 {self.video2_rotation * 90}°")
+        # 立即更新显示
+        self.update_current_frame_display()
+
+    def rotate_frame(self, frame, rotation):
+        """旋转帧"""
+        if rotation == 0:
+            return frame
+        elif rotation == 1:  # 90度顺时针
+            return cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        elif rotation == 2:  # 180度
+            return cv2.rotate(frame, cv2.ROTATE_180)
+        elif rotation == 3:  # 270度顺时针 (90度逆时针)
+            return cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        return frame
+
+    def update_current_frame_display(self):
+        """更新当前帧显示（用于旋转后立即刷新）"""
+        try:
+            # 更新视频1
+            if self.cap1 is not None:
+                current_pos1 = int(self.cap1.get(cv2.CAP_PROP_POS_FRAMES))
+                ret1, frame1 = self.cap1.read()
+                if ret1:
+                    # 应用旋转
+                    rotated_frame1 = self.rotate_frame(frame1, self.video1_rotation)
+                    # 处理姿态检测
+                    processed_frame1 = self.process_pose_detection(rotated_frame1)
+                    # 显示帧
+                    self.display_frame_in_widget(processed_frame1, self.video1_widget)
+                    # 恢复视频位置
+                    self.cap1.set(cv2.CAP_PROP_POS_FRAMES, current_pos1)
+
+            # 更新视频2
+            if self.cap2 is not None:
+                current_pos2 = int(self.cap2.get(cv2.CAP_PROP_POS_FRAMES))
+                ret2, frame2 = self.cap2.read()
+                if ret2:
+                    # 应用旋转
+                    rotated_frame2 = self.rotate_frame(frame2, self.video2_rotation)
+                    # 处理姿态检测
+                    processed_frame2 = self.process_pose_detection(rotated_frame2)
+                    # 显示帧
+                    self.display_frame_in_widget(processed_frame2, self.video2_widget)
+                    # 恢复视频位置
+                    self.cap2.set(cv2.CAP_PROP_POS_FRAMES, current_pos2)
+
+        except Exception as e:
+            print(f"更新当前帧显示时出错: {e}")
+
+    def add_audio_to_video(self, video_path, video_num):
+        """使用FFmpeg将原始音频添加到导出的视频中"""
+        import subprocess
+        import os
+
+        try:
+            # 获取原始视频文件路径
+            if video_num == 1:
+                original_video_path = getattr(self, 'video1_path', None)
+            else:
+                original_video_path = getattr(self, 'video2_path', None)
+
+            if not original_video_path or not os.path.exists(original_video_path):
+                print(f"原始视频文件不存在，跳过音频添加: {original_video_path}")
+                return video_path
+
+            # 检查原始视频是否有音频流
+            check_audio_cmd = [
+                'ffprobe', '-v', 'quiet', '-select_streams', 'a:0',
+                '-show_entries', 'stream=codec_name', '-of', 'csv=p=0',
+                original_video_path
+            ]
+
+            try:
+                result = subprocess.run(check_audio_cmd, capture_output=True, text=True, timeout=10)
+                if not result.stdout.strip():
+                    print(f"原始视频没有音频流，跳过音频添加")
+                    return video_path
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                print(f"检查音频流失败，跳过音频添加: {e}")
+                return video_path
+
+            # 创建带音频的最终输出文件路径
+            base_name = os.path.splitext(video_path)[0]
+            final_output_path = f"{base_name}_with_audio.mp4"
+
+            # 使用FFmpeg合并视频和音频
+            ffmpeg_cmd = [
+                'ffmpeg', '-y',  # -y 覆盖输出文件
+                '-i', video_path,  # 输入视频（无音频）
+                '-i', original_video_path,  # 原始视频（有音频）
+                '-c:v', 'copy',  # 复制视频流（不重新编码）
+                '-c:a', 'aac',   # 音频编码为AAC
+                '-map', '0:v:0',  # 使用第一个输入的视频流
+                '-map', '1:a:0',  # 使用第二个输入的音频流
+                '-shortest',      # 以较短的流为准
+                final_output_path
+            ]
+
+            print(f"执行FFmpeg命令: {' '.join(ffmpeg_cmd)}")
+
+            # 执行FFmpeg命令
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=300)
+
+            if result.returncode == 0:
+                print(f"音频添加成功: {final_output_path}")
+                # 删除临时的无音频视频文件
+                try:
+                    os.remove(video_path)
+                    print(f"删除临时文件: {video_path}")
+                except:
+                    pass
+                return final_output_path
+            else:
+                print(f"FFmpeg执行失败: {result.stderr}")
+                return video_path
+
+        except Exception as e:
+            print(f"添加音频时出错: {e}")
+            return video_path
 
     def cancel_export(self):
         """取消导出"""
@@ -1911,8 +2315,11 @@ class PoseDetectionApp(QMainWindow):
                     self.current_frame1 = frame1
                     self.current_frame_pos1 = int(self.cap1.get(cv2.CAP_PROP_POS_FRAMES))
 
+                    # 应用旋转
+                    rotated_frame1 = self.rotate_frame(frame1, self.video1_rotation)
+
                     # 处理姿态检测
-                    processed_frame1 = self.process_pose_detection(frame1)
+                    processed_frame1 = self.process_pose_detection(rotated_frame1)
 
                     # 显示帧
                     self.display_frame_in_widget(processed_frame1, self.video1_widget)
@@ -1935,8 +2342,11 @@ class PoseDetectionApp(QMainWindow):
                     self.current_frame2 = frame2
                     self.current_frame_pos2 = int(self.cap2.get(cv2.CAP_PROP_POS_FRAMES))
 
+                    # 应用旋转
+                    rotated_frame2 = self.rotate_frame(frame2, self.video2_rotation)
+
                     # 处理姿态检测
-                    processed_frame2 = self.process_pose_detection(frame2)
+                    processed_frame2 = self.process_pose_detection(rotated_frame2)
 
                     # 显示帧
                     self.display_frame_in_widget(processed_frame2, self.video2_widget)

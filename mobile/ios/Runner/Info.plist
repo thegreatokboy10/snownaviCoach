@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>SnowNavi Pose Analyzer</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>snownavi_mobile</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	
+	<!-- Camera Permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to record videos for pose analysis and coaching feedback.</string>
+	
+	<!-- Microphone Permission -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record audio with videos for comprehensive analysis.</string>
+	
+	<!-- Photo Library Permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to save and load videos for pose analysis.</string>
+	
+	<!-- Photo Library Add Permission -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app needs permission to save analyzed videos to your photo library.</string>
+	
+	<!-- File Provider Permission -->
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>This app needs access to documents to save and load video analysis data.</string>
+	
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-processing</string>
+		<string>background-fetch</string>
+	</array>
+	
+	<!-- Supported File Types -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Video Files</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.movie</string>
+				<string>public.video</string>
+				<string>com.apple.quicktime-movie</string>
+				<string>public.mpeg-4</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- URL Schemes -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.snownavi.poseanalyzer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>snownavi</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	
+	<!-- Device Capabilities -->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+		<string>camera-flash</string>
+		<string>video-camera</string>
+		<string>accelerometer</string>
+		<string>gyroscope</string>
+	</array>
+	
+	<!-- Status Bar Style -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	
+	<!-- Prevent Screenshots in App Switcher (Optional for Privacy) -->
+	<key>UIApplicationExitsOnSuspend</key>
+	<false/>
+	
+	<!-- Localization -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+	</array>
+	
+	<!-- App Icon -->
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>Icon-App-20x20@1x</string>
+				<string>Icon-App-20x20@2x</string>
+				<string>Icon-App-20x20@3x</string>
+				<string>Icon-App-29x29@1x</string>
+				<string>Icon-App-29x29@2x</string>
+				<string>Icon-App-29x29@3x</string>
+				<string>Icon-App-40x40@1x</string>
+				<string>Icon-App-40x40@2x</string>
+				<string>Icon-App-40x40@3x</string>
+				<string>Icon-App-60x60@2x</string>
+				<string>Icon-App-60x60@3x</string>
+				<string>Icon-App-76x76@1x</string>
+				<string>Icon-App-76x76@2x</string>
+				<string>Icon-App-83.5x83.5@2x</string>
+				<string>Icon-App-1024x1024@1x</string>
+			</array>
+		</dict>
+	</dict>
+	
+	<!-- Performance Optimizations -->
+	<key>UIPrerenderedIcon</key>
+	<false/>
+	
+	<!-- Metal Performance -->
+	<key>MTLCaptureEnabled</key>
+	<false/>
+	
+	<!-- Privacy Manifest -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryCamera</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>NSPrivacyAccessedAPICategoryReasonCamera.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryMicrophone</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>NSPrivacyAccessedAPICategoryReasonMicrophone.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryPhotoLibrary</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>NSPrivacyAccessedAPICategoryReasonPhotoLibrary.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

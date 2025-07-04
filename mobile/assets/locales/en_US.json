@@ -1,0 +1,190 @@
+{
+  "app": {
+    "title": "SnowNavi Pose Analyzer",
+    "version": "1.0.0",
+    "organization": "SnowNavi"
+  },
+  "navigation": {
+    "home": "Home",
+    "analysis": "Analysis",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "toolbar": {
+    "open_video": "Open Video",
+    "play": "Play",
+    "pause": "Pause",
+    "settings": "Settings",
+    "export": "Export",
+    "help": "Help",
+    "camera": "Camera",
+    "gallery": "Gallery"
+  },
+  "video": {
+    "load_video": "Load Video",
+    "select_video": "Select Video",
+    "record_video": "Record Video",
+    "playing": "Playing",
+    "paused": "Paused",
+    "completed": "Completed",
+    "duration": "Duration: {duration}",
+    "current_time": "Current: {time}",
+    "no_video_selected": "No video selected",
+    "video_loading": "Loading video...",
+    "video_error": "Error loading video"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "video_quality": "Video Quality",
+    "pose_detection": "Pose Detection",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "about": "About",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "save": "Save",
+    "reset": "Reset",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "theme_system": "System",
+    "quality_high": "High",
+    "quality_medium": "Medium",
+    "quality_low": "Low"
+  },
+  "pose_detection": {
+    "title": "Pose Detection",
+    "sensitivity": "Sensitivity",
+    "landmarks": "Landmarks",
+    "connections": "Connections",
+    "enable_detection": "Enable Detection",
+    "real_time": "Real-time Analysis",
+    "confidence_threshold": "Confidence Threshold",
+    "landmark_size": "Landmark Size",
+    "connection_thickness": "Connection Thickness",
+    "colors": "Colors",
+    "body_parts": {
+      "face": "Face",
+      "upper_body": "Upper Body",
+      "lower_body": "Lower Body",
+      "left_arm": "Left Arm",
+      "right_arm": "Right Arm",
+      "left_leg": "Left Leg",
+      "right_leg": "Right Leg"
+    }
+  },
+  "export": {
+    "title": "Export Video",
+    "video_quality": "Video Quality",
+    "output_format": "Output Format",
+    "include_landmarks": "Include Landmarks",
+    "include_connections": "Include Connections",
+    "watermark": "Add Watermark",
+    "start_export": "Start Export",
+    "cancel": "Cancel Export",
+    "exporting": "Exporting...",
+    "export_complete": "Export Complete",
+    "export_failed": "Export Failed",
+    "progress": "Progress: {progress}%",
+    "estimated_time": "Estimated time: {time}"
+  },
+  "camera": {
+    "title": "Camera",
+    "record": "Record",
+    "stop": "Stop",
+    "switch_camera": "Switch Camera",
+    "flash": "Flash",
+    "timer": "Timer",
+    "recording": "Recording...",
+    "recording_stopped": "Recording Stopped",
+    "permission_denied": "Camera permission denied",
+    "camera_error": "Camera error occurred"
+  },
+  "analysis": {
+    "title": "Analysis",
+    "start_analysis": "Start Analysis",
+    "stop_analysis": "Stop Analysis",
+    "analysis_complete": "Analysis Complete",
+    "analysis_failed": "Analysis Failed",
+    "processing": "Processing...",
+    "results": "Results",
+    "no_pose_detected": "No pose detected",
+    "pose_confidence": "Pose Confidence: {confidence}%"
+  },
+  "messages": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Information",
+    "no_video_selected": "Please select a video first",
+    "video_too_large": "Video file is too large",
+    "unsupported_format": "Unsupported video format",
+    "network_error": "Network connection error",
+    "permission_required": "Permission required",
+    "storage_full": "Storage space insufficient"
+  },
+  "dialogs": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "retry": "Retry"
+  },
+  "language": {
+    "title": "Language Settings",
+    "select_language": "Select Language",
+    "chinese": "中文",
+    "english": "English",
+    "auto_detect": "Auto Detect",
+    "restart_required": "Restart required to apply language changes"
+  },
+  "status": {
+    "ready": "Ready",
+    "processing": "Processing",
+    "error": "Error",
+    "offline": "Offline",
+    "online": "Online",
+    "connecting": "Connecting...",
+    "fps": "FPS: {fps}",
+    "memory": "Memory: {memory}"
+  },
+  "permissions": {
+    "camera_title": "Camera Permission",
+    "camera_message": "This app needs camera access to record videos for pose analysis",
+    "storage_title": "Storage Permission",
+    "storage_message": "This app needs storage access to save and load videos",
+    "microphone_title": "Microphone Permission",
+    "microphone_message": "This app needs microphone access to record audio with videos",
+    "grant": "Grant Permission",
+    "deny": "Deny",
+    "settings": "Open Settings"
+  },
+  "help": {
+    "title": "Help",
+    "getting_started": "Getting Started",
+    "how_to_use": "How to Use",
+    "troubleshooting": "Troubleshooting",
+    "contact_support": "Contact Support",
+    "version_info": "Version Information",
+    "privacy_policy": "Privacy Policy",
+    "terms_of_service": "Terms of Service"
+  },
+  "errors": {
+    "general": "An error occurred",
+    "network": "Network connection error",
+    "file_not_found": "File not found",
+    "permission_denied": "Permission denied",
+    "invalid_format": "Invalid file format",
+    "file_too_large": "File is too large",
+    "storage_full": "Storage space insufficient",
+    "camera_unavailable": "Camera is not available",
+    "pose_detection_failed": "Pose detection failed"
+  }
+}

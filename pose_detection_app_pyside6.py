@@ -165,7 +165,7 @@ class PoseDetectionApp(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("专业姿态检测分析系统")
+        self.setWindowTitle("SnowNavi Pose Analyzer")
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
         
@@ -511,10 +511,12 @@ class PoseDetectionApp(QMainWindow):
 
         # 初始化水印设置
         self.watermark_enabled = True  # 默认启用水印
-        self.watermark_type = "文字水印"
+        self.text_watermark_enabled = True  # 文字水印启用
+        self.image_watermark_enabled = True  # 图片水印启用
         self.watermark_text = "SnowNavi Pose Analyzer"  # 默认文字
         self.watermark_image_path = "snownavi_logo.png"
-        self.watermark_position = "右下角"
+        self.text_watermark_position = "右下角"  # 文字水印位置
+        self.image_watermark_position = "左下角"  # 图片水印位置
         self.watermark_opacity = 70
         self.watermark_size = "中"
 
@@ -624,6 +626,11 @@ class PoseDetectionApp(QMainWindow):
                     self.update_time_display1()
 
                     self.update_status(f"视频1加载成功: {os.path.basename(file_path)} (旋转已重置)")
+
+                    # 更新导出选项状态
+                    if hasattr(self, 'export_dialog') and self.export_dialog is not None:
+                        self.update_export_video_options()
+
                     return True
                 else:
                     QMessageBox.critical(self, "错误", "无法打开视频文件")
@@ -684,6 +691,11 @@ class PoseDetectionApp(QMainWindow):
                     self.update_time_display2()
 
                     self.update_status(f"视频2加载成功，启用比较模式: {os.path.basename(file_path)} (旋转已重置)")
+
+                    # 更新导出选项状态
+                    if hasattr(self, 'export_dialog') and self.export_dialog is not None:
+                        self.update_export_video_options()
+
                     return True
                 else:
                     QMessageBox.critical(self, "错误", "无法打开视频文件")
@@ -831,6 +843,8 @@ class PoseDetectionApp(QMainWindow):
                 self.preview_timer.stop()
             self.export_dialog.hide()
         else:
+            # 更新视频选择选项状态
+            self.update_export_video_options()
             self.export_dialog.show()
             # 刷新预览，确保显示当前旋转状态
             if hasattr(self, 'refresh_export_preview'):
@@ -937,13 +951,6 @@ class PoseDetectionApp(QMainWindow):
         video_layout.addWidget(self.export_video1_cb)
 
         self.export_video2_cb = QCheckBox("导出视频2（带姿态检测）")
-        # 只有在视频2加载时才启用和选中
-        if hasattr(self, 'cap2') and self.cap2 is not None:
-            self.export_video2_cb.setEnabled(True)
-            self.export_video2_cb.setChecked(True)
-        else:
-            self.export_video2_cb.setEnabled(False)
-            self.export_video2_cb.setChecked(False)
         video_layout.addWidget(self.export_video2_cb)
 
         layout.addWidget(video_group)
@@ -1014,21 +1021,17 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_enabled_cb.stateChanged.connect(self.on_watermark_enabled_changed)
         watermark_layout.addWidget(self.watermark_enabled_cb)
 
-        # 水印类型选择
-        type_layout = QHBoxLayout()
-        type_layout.addWidget(QLabel("水印类型:"))
-        self.watermark_type_combo = QComboBox()
-        self.watermark_type_combo.addItems(["文字水印", "图片水印"])
-        self.watermark_type_combo.setCurrentText("文字水印")
-        self.watermark_type_combo.currentTextChanged.connect(self.on_watermark_type_changed)
-        type_layout.addWidget(self.watermark_type_combo)
-        watermark_layout.addLayout(type_layout)
-
         # 文字水印设置
-        self.text_watermark_widget = QWidget()
-        text_watermark_layout = QVBoxLayout(self.text_watermark_widget)
-        text_watermark_layout.setContentsMargins(0, 0, 0, 0)
+        text_watermark_group = QGroupBox("文字水印")
+        text_watermark_layout = QVBoxLayout(text_watermark_group)
 
+        # 启用文字水印
+        self.text_watermark_enabled_cb = QCheckBox("启用文字水印")
+        self.text_watermark_enabled_cb.setChecked(self.text_watermark_enabled)
+        self.text_watermark_enabled_cb.stateChanged.connect(self.on_text_watermark_enabled_changed)
+        text_watermark_layout.addWidget(self.text_watermark_enabled_cb)
+
+        # 文字水印文本
         text_layout = QHBoxLayout()
         text_layout.addWidget(QLabel("水印文本:"))
         self.watermark_text_input = QLineEdit()
@@ -1038,12 +1041,27 @@ class PoseDetectionApp(QMainWindow):
         text_layout.addWidget(self.watermark_text_input)
         text_watermark_layout.addLayout(text_layout)
 
-        watermark_layout.addWidget(self.text_watermark_widget)
+        # 文字水印位置
+        text_position_layout = QHBoxLayout()
+        text_position_layout.addWidget(QLabel("位置:"))
+        self.text_watermark_position_combo = QComboBox()
+        self.text_watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
+        self.text_watermark_position_combo.setCurrentText(self.text_watermark_position)
+        self.text_watermark_position_combo.currentTextChanged.connect(self.on_text_watermark_position_changed)
+        text_position_layout.addWidget(self.text_watermark_position_combo)
+        text_watermark_layout.addLayout(text_position_layout)
+
+        watermark_layout.addWidget(text_watermark_group)
 
         # 图片水印设置
-        self.image_watermark_widget = QWidget()
-        image_watermark_layout = QVBoxLayout(self.image_watermark_widget)
-        image_watermark_layout.setContentsMargins(0, 0, 0, 0)
+        image_watermark_group = QGroupBox("图片水印")
+        image_watermark_layout = QVBoxLayout(image_watermark_group)
+
+        # 启用图片水印
+        self.image_watermark_enabled_cb = QCheckBox("启用图片水印")
+        self.image_watermark_enabled_cb.setChecked(self.image_watermark_enabled)
+        self.image_watermark_enabled_cb.stateChanged.connect(self.on_image_watermark_enabled_changed)
+        image_watermark_layout.addWidget(self.image_watermark_enabled_cb)
 
         # 图片选择
         image_layout = QHBoxLayout()
@@ -1059,20 +1077,21 @@ class PoseDetectionApp(QMainWindow):
         image_layout.addWidget(self.watermark_image_browse_btn)
         image_watermark_layout.addLayout(image_layout)
 
-        watermark_layout.addWidget(self.image_watermark_widget)
+        # 图片水印位置
+        image_position_layout = QHBoxLayout()
+        image_position_layout.addWidget(QLabel("位置:"))
+        self.image_watermark_position_combo = QComboBox()
+        self.image_watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
+        self.image_watermark_position_combo.setCurrentText(self.image_watermark_position)
+        self.image_watermark_position_combo.currentTextChanged.connect(self.on_image_watermark_position_changed)
+        image_position_layout.addWidget(self.image_watermark_position_combo)
+        image_watermark_layout.addLayout(image_position_layout)
 
-        # 默认隐藏图片水印设置
-        self.image_watermark_widget.setVisible(False)
+        watermark_layout.addWidget(image_watermark_group)
 
-        # 水印位置
-        position_layout = QHBoxLayout()
-        position_layout.addWidget(QLabel("位置:"))
-        self.watermark_position_combo = QComboBox()
-        self.watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
-        self.watermark_position_combo.setCurrentText("右下角")  # 文字水印默认右下角
-        self.watermark_position_combo.currentTextChanged.connect(self.on_watermark_position_changed)
-        position_layout.addWidget(self.watermark_position_combo)
-        watermark_layout.addLayout(position_layout)
+        # 通用水印设置
+        common_group = QGroupBox("通用设置")
+        common_layout = QVBoxLayout(common_group)
 
         # 水印透明度
         opacity_layout = QHBoxLayout()
@@ -1084,7 +1103,7 @@ class PoseDetectionApp(QMainWindow):
         opacity_layout.addWidget(self.watermark_opacity_slider)
         self.watermark_opacity_label = QLabel("70%")
         opacity_layout.addWidget(self.watermark_opacity_label)
-        watermark_layout.addLayout(opacity_layout)
+        common_layout.addLayout(opacity_layout)
 
         # 水印大小
         size_layout = QHBoxLayout()
@@ -1094,7 +1113,9 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_size_combo.setCurrentText("中")
         self.watermark_size_combo.currentTextChanged.connect(self.on_watermark_size_changed)
         size_layout.addWidget(self.watermark_size_combo)
-        watermark_layout.addLayout(size_layout)
+        common_layout.addLayout(size_layout)
+
+        watermark_layout.addWidget(common_group)
 
         layout.addWidget(watermark_group)
 
@@ -1176,19 +1197,62 @@ class PoseDetectionApp(QMainWindow):
         # 导出取消标志
         self.export_cancelled = False
 
+    def update_export_video_options(self):
+        """更新导出视频选项的可用状态"""
+        if hasattr(self, 'export_video1_cb'):
+            # 视频1选项
+            if hasattr(self, 'cap1') and self.cap1 is not None:
+                self.export_video1_cb.setEnabled(True)
+                if not self.export_video1_cb.isChecked():
+                    self.export_video1_cb.setChecked(True)
+            else:
+                self.export_video1_cb.setEnabled(False)
+                self.export_video1_cb.setChecked(False)
+
+        if hasattr(self, 'export_video2_cb'):
+            # 视频2选项
+            if hasattr(self, 'cap2') and self.cap2 is not None:
+                self.export_video2_cb.setEnabled(True)
+                if not self.export_video2_cb.isChecked():
+                    self.export_video2_cb.setChecked(True)
+            else:
+                self.export_video2_cb.setEnabled(False)
+                self.export_video2_cb.setChecked(False)
+
     def on_watermark_enabled_changed(self, state):
         """水印启用状态改变"""
         self.watermark_enabled = (state == Qt.CheckState.Checked.value)
         # 启用/禁用水印相关控件
         enabled = self.watermark_enabled
-        self.watermark_type_combo.setEnabled(enabled)
-        self.watermark_text_input.setEnabled(enabled)
-        self.watermark_image_input.setEnabled(enabled)
-        self.watermark_image_browse_btn.setEnabled(enabled)
-        self.watermark_position_combo.setEnabled(enabled)
+        self.text_watermark_enabled_cb.setEnabled(enabled)
+        self.image_watermark_enabled_cb.setEnabled(enabled)
+        self.watermark_text_input.setEnabled(enabled and self.text_watermark_enabled)
+        self.watermark_image_input.setEnabled(enabled and self.image_watermark_enabled)
+        self.watermark_image_browse_btn.setEnabled(enabled and self.image_watermark_enabled)
+        self.text_watermark_position_combo.setEnabled(enabled and self.text_watermark_enabled)
+        self.image_watermark_position_combo.setEnabled(enabled and self.image_watermark_enabled)
         self.watermark_opacity_slider.setEnabled(enabled)
         self.watermark_size_combo.setEnabled(enabled)
         # 刷新预览以显示水印启用/禁用效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
+
+    def on_text_watermark_enabled_changed(self, state):
+        """文字水印启用状态改变"""
+        self.text_watermark_enabled = (state == Qt.CheckState.Checked.value)
+        enabled = self.watermark_enabled and self.text_watermark_enabled
+        self.watermark_text_input.setEnabled(enabled)
+        self.text_watermark_position_combo.setEnabled(enabled)
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
+
+    def on_image_watermark_enabled_changed(self, state):
+        """图片水印启用状态改变"""
+        self.image_watermark_enabled = (state == Qt.CheckState.Checked.value)
+        enabled = self.watermark_enabled and self.image_watermark_enabled
+        self.watermark_image_input.setEnabled(enabled)
+        self.watermark_image_browse_btn.setEnabled(enabled)
+        self.image_watermark_position_combo.setEnabled(enabled)
         if hasattr(self, 'export_preview_widget'):
             self.refresh_export_preview()
 
@@ -1199,9 +1263,16 @@ class PoseDetectionApp(QMainWindow):
         if hasattr(self, 'export_preview_widget'):
             self.refresh_export_preview()
 
-    def on_watermark_position_changed(self, position):
-        """水印位置改变"""
-        self.watermark_position = position
+    def on_text_watermark_position_changed(self, position):
+        """文字水印位置改变"""
+        self.text_watermark_position = position
+        # 刷新预览以显示新的水印效果
+        if hasattr(self, 'export_preview_widget'):
+            self.refresh_export_preview()
+
+    def on_image_watermark_position_changed(self, position):
+        """图片水印位置改变"""
+        self.image_watermark_position = position
         # 刷新预览以显示新的水印效果
         if hasattr(self, 'export_preview_widget'):
             self.refresh_export_preview()
@@ -1221,27 +1292,7 @@ class PoseDetectionApp(QMainWindow):
         if hasattr(self, 'export_preview_widget'):
             self.refresh_export_preview()
 
-    def on_watermark_type_changed(self, watermark_type):
-        """水印类型改变"""
-        self.watermark_type = watermark_type
 
-        # 切换显示相应的设置控件
-        if watermark_type == "文字水印":
-            self.text_watermark_widget.setVisible(True)
-            self.image_watermark_widget.setVisible(False)
-            # 文字水印默认右下角
-            if self.watermark_position_combo.currentText() == "左下角":
-                self.watermark_position_combo.setCurrentText("右下角")
-        else:  # 图片水印
-            self.text_watermark_widget.setVisible(False)
-            self.image_watermark_widget.setVisible(True)
-            # 图片水印默认左下角
-            if self.watermark_position_combo.currentText() == "右下角":
-                self.watermark_position_combo.setCurrentText("左下角")
-
-        # 刷新预览以显示新的水印类型效果
-        if hasattr(self, 'export_preview_widget'):
-            self.refresh_export_preview()
 
     def on_watermark_image_changed(self, image_path):
         """水印图片路径改变"""
@@ -1394,9 +1445,11 @@ class PoseDetectionApp(QMainWindow):
 
             # 如果启用水印，添加水印
             if self.watermark_enabled:
-                if self.watermark_type == "文字水印" and self.watermark_text:
+                # 添加文字水印
+                if self.text_watermark_enabled and self.watermark_text:
                     processed_frame = self.add_text_watermark(processed_frame)
-                elif self.watermark_type == "图片水印" and self.watermark_image_path:
+                # 添加图片水印
+                if self.image_watermark_enabled and self.watermark_image_path:
                     processed_frame = self.add_image_watermark(processed_frame)
 
             return processed_frame
@@ -1431,16 +1484,17 @@ class PoseDetectionApp(QMainWindow):
 
             # 计算位置
             margin = 20
-            if self.watermark_position == "右下角":
+            position = getattr(self, 'text_watermark_position', '右下角')
+            if position == "右下角":
                 x = width - text_width - margin
                 y = height - margin
-            elif self.watermark_position == "右上角":
+            elif position == "右上角":
                 x = width - text_width - margin
                 y = text_height + margin
-            elif self.watermark_position == "左下角":
+            elif position == "左下角":
                 x = margin
                 y = height - margin
-            elif self.watermark_position == "左上角":
+            elif position == "左上角":
                 x = margin
                 y = text_height + margin
             else:  # 居中
@@ -1505,16 +1559,17 @@ class PoseDetectionApp(QMainWindow):
 
             # 计算水印位置
             margin = 20
-            if self.watermark_position == "右下角":
+            position = getattr(self, 'image_watermark_position', '左下角')
+            if position == "右下角":
                 x = frame_width - watermark_width - margin
                 y = frame_height - watermark_height - margin
-            elif self.watermark_position == "右上角":
+            elif position == "右上角":
                 x = frame_width - watermark_width - margin
                 y = margin
-            elif self.watermark_position == "左下角":
+            elif position == "左下角":
                 x = margin
                 y = frame_height - watermark_height - margin
-            elif self.watermark_position == "左上角":
+            elif position == "左上角":
                 x = margin
                 y = margin
             else:  # 居中
@@ -3523,9 +3578,9 @@ def main():
     app = QApplication(sys.argv)
     
     # 设置应用信息
-    app.setApplicationName("专业姿态检测分析系统")
+    app.setApplicationName("SnowNavi Pose Analyzer")
     app.setApplicationVersion("2.0")
-    app.setOrganizationName("PoseAnalysis Pro")
+    app.setOrganizationName("SnowNavi")
     
     # 创建主窗口
     window = PoseDetectionApp()

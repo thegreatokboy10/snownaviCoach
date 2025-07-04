@@ -16,10 +16,10 @@
 **验证方法**：
 ```bash
 # 运行最终UI测试
-python test_final_ui.py
+python tests/test_final_ui.py
 
 # 运行UI响应性测试
-python test_ui_responsiveness.py
+python tests/test_ui_responsiveness.py
 ```
 
 **现象确认**：
@@ -54,7 +54,7 @@ python test_ui_responsiveness.py
 source pose_detection_env/bin/activate
 
 # 2. 检查依赖
-python test_pose_detection.py
+python tests/test_pose_detection.py
 
 # 3. 重新安装依赖（如果需要）
 pip install -r requirements.txt
@@ -124,7 +124,7 @@ WARNING: All log messages before absl::InitializeLog() is called are written to 
 **验证修复**：
 ```bash
 # 测试颜色修复效果
-python test_color_fix.py
+python tests/test_color_fix.py
 ```
 
 #### 问题：重置按钮无效
@@ -144,10 +144,10 @@ python test_color_fix.py
 #### 性能调优
 ```bash
 # 检查当前性能
-python test_performance.py
+python tests/test_performance.py
 
 # 检查UI响应性
-python test_ui_responsiveness.py
+python tests/test_ui_responsiveness.py
 ```
 
 **期望指标**：
@@ -192,7 +192,7 @@ python -c "import tkinter; print('tkinter OK')"
 
 2. **运行诊断**：
    ```bash
-   python test_pose_detection.py > diagnostic.log 2>&1
+   python tests/test_pose_detection.py > diagnostic.log 2>&1
    ```
 
 3. **提供反馈**：

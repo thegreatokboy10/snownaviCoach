@@ -8,7 +8,7 @@
 source pose_detection_env/bin/activate
 
 # 启动应用程序
-python pose_detection_app.py
+python pose_detection_app_pyside6.py
 ```
 
 ### 2. 使用步骤
@@ -105,7 +105,7 @@ python pose_detection_app.py
 source pose_detection_env/bin/activate
 
 # 检查依赖
-python test_pose_detection.py
+python tests/test_pose_detection.py
 ```
 
 ### 如果视频无法播放
@@ -121,7 +121,7 @@ python test_pose_detection.py
 ## 🧪 性能测试
 运行性能测试来验证系统性能：
 ```bash
-python test_performance.py
+python tests/test_performance.py
 ```
 
 ## 📝 技术细节

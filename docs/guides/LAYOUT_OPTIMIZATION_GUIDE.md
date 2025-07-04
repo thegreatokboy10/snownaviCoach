@@ -160,7 +160,7 @@ right_layout.addWidget(self.export_preview_widget, 1)  # 拉伸因子为1
 ## 相关文件
 
 - `pose_detection_app_pyside6.py` - 主应用程序文件（已优化）
-- `LAYOUT_OPTIMIZATION_GUIDE.md` - 本文档
+- `docs/guides/LAYOUT_OPTIMIZATION_GUIDE.md` - 本文档
 
 ## 未来改进方向
 

@@ -562,7 +562,7 @@ class PoseDetectionApp(QMainWindow):
         self.text_watermark_enabled = True  # 文字水印启用
         self.image_watermark_enabled = True  # 图片水印启用
         self.watermark_text = "SnowNavi Pose Analyzer"  # 默认文字
-        self.watermark_image_path = "snownavi_logo.png"
+        self.watermark_image_path = "assets/snownavi_logo.png"
         self.text_watermark_position = "右下角"  # 文字水印位置
         self.image_watermark_position = "左下角"  # 图片水印位置
         self.watermark_opacity = 70
@@ -1277,7 +1277,7 @@ class PoseDetectionApp(QMainWindow):
         image_layout.addWidget(QLabel("水印图片:"))
         self.watermark_image_input = QLineEdit()
         self.watermark_image_input.setPlaceholderText("选择水印图片...")
-        self.watermark_image_input.setText("snownavi_logo.png")
+        self.watermark_image_input.setText("assets/snownavi_logo.png")
         self.watermark_image_input.textChanged.connect(self.on_watermark_image_changed)
         image_layout.addWidget(self.watermark_image_input)
 

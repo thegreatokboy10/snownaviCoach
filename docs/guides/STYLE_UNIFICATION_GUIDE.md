@@ -112,7 +112,7 @@ QPushButton:hover {
 ```bash
 # 运行样式测试
 source pose_detection_env/bin/activate
-python test_unified_styles.py
+python tests/test_unified_styles.py
 ```
 
 ## 使用建议
@@ -156,8 +156,8 @@ self.export_dialog.setStyleSheet("""
 ## 相关文件
 
 - `pose_detection_app_pyside6.py` - 主应用程序文件
-- `test_unified_styles.py` - 样式测试工具
-- `STYLE_UNIFICATION_GUIDE.md` - 本文档
+- `tests/test_unified_styles.py` - 样式测试工具
+- `docs/guides/STYLE_UNIFICATION_GUIDE.md` - 本文档
 
 ---
 

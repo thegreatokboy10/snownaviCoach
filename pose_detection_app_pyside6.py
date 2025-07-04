@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QDialog, QDialogButtonBox, QSpacerItem,
     QSizePolicy, QToolBar, QStatusBar, QTabWidget, QLineEdit
 )
+from translation_manager import tr, get_translation_manager, set_language, get_current_language, get_available_languages
 from PySide6.QtCore import (
     Qt, QTimer, QThread, Signal, QSize, QPropertyAnimation, QEasingCurve,
     QRect, QPoint
@@ -104,7 +105,7 @@ class VideoWidget(QLabel):
             }
         """)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setText("🎬 点击工具栏打开视频文件\n支持 MP4, AVI, MOV 等格式")
+        self.setText(tr("video_widget.default_text"))
         self.setScaledContents(True)
 
 class PoseDetectionApp(QMainWindow):
@@ -163,7 +164,7 @@ class PoseDetectionApp(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("SnowNavi Pose Analyzer")
+        self.setWindowTitle(tr("app.title"))
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
         
@@ -299,10 +300,10 @@ class PoseDetectionApp(QMainWindow):
         
         # 工具栏按钮
         actions = [
-            ("📁", "打开视频", self.smart_open_video),
-            ("⚙️", "显示设置", self.toggle_landmark_selector),
-            ("💾", "导出视频", self.toggle_export),
-            ("❓", "帮助", self.toggle_help),
+            ("📁", tr("toolbar.open_video"), self.smart_open_video),
+            ("⚙️", tr("toolbar.settings"), self.toggle_landmark_selector),
+            ("💾", tr("toolbar.export"), self.toggle_export),
+            ("❓", tr("toolbar.help"), self.toggle_help),
         ]
         
         for icon, text, callback in actions:
@@ -316,7 +317,7 @@ class PoseDetectionApp(QMainWindow):
         # 快捷配置选择
         toolbar.addSeparator()
 
-        config_label = QLabel("快捷配置:")
+        config_label = QLabel(tr("settings.quick_select"))
         config_label.setStyleSheet("color: white; padding: 8px; font-weight: 500;")
         toolbar.addWidget(config_label)
 
@@ -352,11 +353,62 @@ class PoseDetectionApp(QMainWindow):
         toolbar.addWidget(self.toolbar_config_combo)
 
         # 初始化工具栏配置选项（延迟更新）
-        self.toolbar_config_combo.addItem("选择配置...")
+        self.toolbar_config_combo.addItem(tr("toolbar.config_select"))
         QTimer.singleShot(100, self.update_toolbar_config_combo)
 
+        # 语言选择
+        toolbar.addSeparator()
+
+        language_label = QLabel(tr("language.select_language"))
+        language_label.setStyleSheet("color: white; padding: 8px; font-weight: 500;")
+        toolbar.addWidget(language_label)
+
+        self.language_combo = QComboBox()
+        self.language_combo.setMinimumWidth(80)
+        self.language_combo.setStyleSheet("""
+            QComboBox {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+                color: white;
+                padding: 4px 8px;
+                font-weight: 500;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid white;
+                margin-right: 5px;
+            }
+            QComboBox QAbstractItemView {
+                background: #2c3e50;
+                color: white;
+                selection-background-color: #34495e;
+                border: 1px solid #555;
+            }
+        """)
+
+        # 填充语言选项
+        available_languages = get_available_languages()
+        for lang_code, lang_name in available_languages.items():
+            self.language_combo.addItem(lang_name, lang_code)
+
+        # 设置当前语言
+        current_lang = get_current_language()
+        for i in range(self.language_combo.count()):
+            if self.language_combo.itemData(i) == current_lang:
+                self.language_combo.setCurrentIndex(i)
+                break
+
+        self.language_combo.currentTextChanged.connect(self.on_language_changed)
+        toolbar.addWidget(self.language_combo)
+
         # 状态标签
-        self.toolbar_status = QLabel("就绪")
+        self.toolbar_status = QLabel(tr("toolbar.status_ready"))
         self.toolbar_status.setStyleSheet("color: white; padding: 8px; font-weight: 500;")
         toolbar.addWidget(self.toolbar_status)
         
@@ -408,7 +460,7 @@ class PoseDetectionApp(QMainWindow):
 
         # 视频2显示区域
         self.video2_widget = VideoWidget()
-        self.video2_widget.setText("🎬 第二个视频\n用于对比分析")
+        self.video2_widget.setText(tr("video_widget.video2_text"))
         video2_layout.addWidget(self.video2_widget)
 
         # 视频2控制面板
@@ -519,15 +571,15 @@ class PoseDetectionApp(QMainWindow):
         status_bar = QStatusBar()
         
         # 主状态标签
-        self.status_label = QLabel("就绪")
+        self.status_label = QLabel(tr("status.ready"))
         status_bar.addWidget(self.status_label)
-        
+
         # FPS标签
         self.fps_label = QLabel("FPS: --")
         status_bar.addPermanentWidget(self.fps_label)
-        
+
         # 内存使用标签
-        self.memory_label = QLabel("内存: --")
+        self.memory_label = QLabel(tr("status.memory", memory="--"))
         status_bar.addPermanentWidget(self.memory_label)
         
         self.setStatusBar(status_bar)
@@ -584,7 +636,7 @@ class PoseDetectionApp(QMainWindow):
     def initialize_mediapipe(self):
         """初始化MediaPipe"""
         try:
-            self.update_status("正在初始化MediaPipe...")
+            self.update_status(tr("messages.mediapipe_initializing"))
 
             self.mp_pose = mp.solutions.pose
             self.mp_drawing = mp.solutions.drawing_utils
@@ -600,10 +652,10 @@ class PoseDetectionApp(QMainWindow):
             )
 
             self.mediapipe_initialized = True
-            self.update_status("MediaPipe初始化完成")
+            self.update_status(tr("messages.mediapipe_initialized"))
 
         except Exception as e:
-            self.update_status(f"MediaPipe初始化失败: {str(e)}")
+            self.update_status(tr("messages.mediapipe_init_failed", error=str(e)))
             self.mediapipe_initialized = False
 
     def smart_open_video(self):
@@ -624,16 +676,16 @@ class PoseDetectionApp(QMainWindow):
                 self.show_video_replace_dialog()
 
         except Exception as e:
-            self.update_status(f"打开视频失败: {str(e)}")
+            self.update_status(tr("messages.open_video_failed", error=str(e)))
 
     def load_video1(self):
         """加载视频1"""
         try:
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
-                "选择视频文件",
+                tr("file_dialogs.select_video"),
                 "",
-                "视频文件 (*.mp4 *.avi *.mov *.mkv *.wmv *.flv);;所有文件 (*.*)"
+                tr("file_dialogs.video_files")
             )
 
             if file_path:
@@ -673,7 +725,7 @@ class PoseDetectionApp(QMainWindow):
                     # 更新时间显示
                     self.update_time_display1()
 
-                    self.update_status(f"视频1加载成功: {os.path.basename(file_path)} (旋转已重置)")
+                    self.update_status(tr("messages.video1_loaded", filename=os.path.basename(file_path)))
 
                     # 更新导出选项状态
                     if hasattr(self, 'export_dialog') and self.export_dialog is not None:
@@ -681,10 +733,10 @@ class PoseDetectionApp(QMainWindow):
 
                     return True
                 else:
-                    QMessageBox.critical(self, "错误", "无法打开视频文件")
+                    QMessageBox.critical(self, tr("file_dialogs.error"), tr("messages.cannot_open_video"))
                     return False
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"加载视频时出错: {str(e)}")
+            QMessageBox.critical(self, tr("file_dialogs.error"), tr("messages.load_video_error", error=str(e)))
             return False
 
     def load_video2(self):
@@ -692,9 +744,9 @@ class PoseDetectionApp(QMainWindow):
         try:
             file_path, _ = QFileDialog.getOpenFileName(
                 self,
-                "选择第二个视频文件",
+                tr("file_dialogs.select_second_video"),
                 "",
-                "视频文件 (*.mp4 *.avi *.mov *.mkv *.wmv *.flv);;所有文件 (*.*)"
+                tr("file_dialogs.video_files")
             )
 
             if file_path:
@@ -738,7 +790,7 @@ class PoseDetectionApp(QMainWindow):
                     # 更新时间显示
                     self.update_time_display2()
 
-                    self.update_status(f"视频2加载成功，启用比较模式: {os.path.basename(file_path)} (旋转已重置)")
+                    self.update_status(tr("messages.video2_loaded", filename=os.path.basename(file_path)))
 
                     # 更新导出选项状态
                     if hasattr(self, 'export_dialog') and self.export_dialog is not None:
@@ -746,46 +798,46 @@ class PoseDetectionApp(QMainWindow):
 
                     return True
                 else:
-                    QMessageBox.critical(self, "错误", "无法打开视频文件")
+                    QMessageBox.critical(self, tr("file_dialogs.error"), tr("messages.cannot_open_video"))
                     return False
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"加载视频时出错: {str(e)}")
+            QMessageBox.critical(self, tr("file_dialogs.error"), tr("messages.load_video_error", error=str(e)))
             return False
 
     def show_video_replace_dialog(self):
         """显示视频替换对话框"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("替换视频")
+        dialog.setWindowTitle(tr("video.replace_video"))
         dialog.setFixedSize(350, 200)
 
         layout = QVBoxLayout(dialog)
 
         # 标题
-        title_label = QLabel("已有两个视频")
+        title_label = QLabel(tr("replace_dialog.title"))
         title_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
 
         # 说明
-        desc_label = QLabel("请选择要替换的视频:")
+        desc_label = QLabel(tr("replace_dialog.description"))
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc_label)
 
         # 按钮
         button_layout = QHBoxLayout()
 
-        btn1 = ModernButton("替换视频1", "", "#FF9800")
+        btn1 = ModernButton(tr("replace_dialog.replace_video1"), "", "#FF9800")
         btn1.clicked.connect(lambda: self.replace_video(dialog, 1))
         button_layout.addWidget(btn1)
 
-        btn2 = ModernButton("替换视频2", "", "#FF9800")
+        btn2 = ModernButton(tr("replace_dialog.replace_video2"), "", "#FF9800")
         btn2.clicked.connect(lambda: self.replace_video(dialog, 2))
         button_layout.addWidget(btn2)
 
         layout.addLayout(button_layout)
 
         # 取消按钮
-        cancel_btn = ModernButton("取消", "", "#607D8B")
+        cancel_btn = ModernButton(tr("replace_dialog.cancel"), "", "#607D8B")
         cancel_btn.clicked.connect(dialog.reject)
         layout.addWidget(cancel_btn)
 
@@ -855,8 +907,8 @@ class PoseDetectionApp(QMainWindow):
                 widget.setAlignment(Qt.AlignmentFlag.AlignCenter)  # 居中显示
 
         except Exception as e:
-            print(f"显示帧时出错: {e}")
-            widget.setText(f"显示错误: {str(e)}")
+            print(tr("messages.display_frame_error", error=str(e)))
+            widget.setText(tr("video_widget.display_error", error=str(e)))
 
     def update_video_layout(self):
         """更新视频布局"""
@@ -924,7 +976,7 @@ class PoseDetectionApp(QMainWindow):
     def create_export_dialog(self):
         """创建导出对话框"""
         self.export_dialog = QDialog(self)
-        self.export_dialog.setWindowTitle("导出视频")
+        self.export_dialog.setWindowTitle(tr("export.title"))
         self.export_dialog.setFixedSize(900, 700)  # 增大窗口以容纳更多内容
 
         # 设置统一的对话框样式，确保在日间/夜间模式下都保持一致
@@ -1072,7 +1124,7 @@ class PoseDetectionApp(QMainWindow):
         left_widget.setFixedWidth(350)  # 减少左侧宽度，给预览更多空间
 
         # 标题 - 更紧凑
-        title_label = QLabel("💾 导出视频")
+        title_label = QLabel("💾 " + tr("export.title"))
         title_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))  # 减小字体
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("color: #2c3e50; padding: 5px;")  # 减少内边距
@@ -1106,7 +1158,7 @@ class PoseDetectionApp(QMainWindow):
         right_layout.setSpacing(6)  # 减少间距
 
         # 预览标题 - 更紧凑
-        preview_title = QLabel("🎬 预览效果")
+        preview_title = QLabel("🎬 " + tr("export.preview_title"))
         preview_title.setFont(QFont("Arial", 12, QFont.Weight.Bold))  # 减小字体
         preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         preview_title.setStyleSheet("color: #2c3e50; padding: 3px;")  # 减少内边距
@@ -1115,18 +1167,18 @@ class PoseDetectionApp(QMainWindow):
         # 预览视频区域 - 扩大尺寸，充分利用空间
         self.export_preview_widget = VideoWidget()
         self.export_preview_widget.setMinimumSize(500, 420)  # 显著增大预览区域
-        self.export_preview_widget.setText("🎬 点击播放预览\n查看导出效果")
+        self.export_preview_widget.setText(tr("video_widget.preview_text"))
         right_layout.addWidget(self.export_preview_widget, 1)  # 添加拉伸因子，让预览区域占据剩余空间
 
         # 预览控制按钮 - 更紧凑
         preview_control_layout = QHBoxLayout()
         preview_control_layout.setSpacing(6)  # 减少按钮间距
 
-        self.preview_play_btn = ModernButton("播放", "▶️", "#4CAF50")  # 简化文字
+        self.preview_play_btn = ModernButton(tr("toolbar.play"), "▶️", "#4CAF50")  # 简化文字
         self.preview_play_btn.clicked.connect(self.toggle_export_preview)
         preview_control_layout.addWidget(self.preview_play_btn)
 
-        self.preview_refresh_btn = ModernButton("刷新", "🔄", "#2196F3")  # 简化文字
+        self.preview_refresh_btn = ModernButton(tr("export.refresh"), "🔄", "#2196F3")  # 简化文字
         self.preview_refresh_btn.clicked.connect(self.refresh_export_preview)
         preview_control_layout.addWidget(self.preview_refresh_btn)
 
@@ -1140,29 +1192,29 @@ class PoseDetectionApp(QMainWindow):
         layout = left_layout
 
         # 视频选择 - 紧凑布局
-        video_group = QGroupBox("选择要导出的视频")
+        video_group = QGroupBox(tr("export.video_selection"))
         video_layout = QVBoxLayout(video_group)
         video_layout.setContentsMargins(8, 8, 8, 8)  # 减少内边距
         video_layout.setSpacing(4)  # 减少间距
 
-        self.export_video1_cb = QCheckBox("导出视频1（带姿态检测）")
+        self.export_video1_cb = QCheckBox(tr("export.export_video1"))
         self.export_video1_cb.setChecked(True)
         video_layout.addWidget(self.export_video1_cb)
 
-        self.export_video2_cb = QCheckBox("导出视频2（带姿态检测）")
+        self.export_video2_cb = QCheckBox(tr("export.export_video2"))
         video_layout.addWidget(self.export_video2_cb)
 
         layout.addWidget(video_group)
 
         # 导出设置 - 紧凑布局
-        settings_group = QGroupBox("导出设置")
+        settings_group = QGroupBox(tr("export.output_settings"))
         settings_layout = QVBoxLayout(settings_group)
         settings_layout.setContentsMargins(8, 8, 8, 8)  # 减少内边距
         settings_layout.setSpacing(6)  # 减少间距
 
         # 质量设置
         quality_layout = QHBoxLayout()
-        quality_layout.addWidget(QLabel("视频质量:"))
+        quality_layout.addWidget(QLabel(tr("export.quality")))
         self.quality_combo = QComboBox()
         self.quality_combo.addItems(["高质量", "中等质量", "压缩质量"])
         self.quality_combo.setCurrentText("高质量")
@@ -1171,7 +1223,7 @@ class PoseDetectionApp(QMainWindow):
 
         # 帧率设置
         fps_layout = QHBoxLayout()
-        fps_layout.addWidget(QLabel("输出帧率:"))
+        fps_layout.addWidget(QLabel(tr("export.output_fps")))
         self.fps_combo = QComboBox()
         self.fps_combo.addItems(["原始帧率", "30 FPS", "25 FPS", "15 FPS"])
         self.fps_combo.setCurrentText("原始帧率")
@@ -1181,7 +1233,7 @@ class PoseDetectionApp(QMainWindow):
         layout.addWidget(settings_group)
 
         # 旋转设置 - 紧凑布局
-        rotation_group = QGroupBox("旋转设置")
+        rotation_group = QGroupBox(tr("export.rotation_settings"))
         rotation_layout = QVBoxLayout(rotation_group)
         rotation_layout.setContentsMargins(8, 8, 8, 8)
         rotation_layout.setSpacing(4)
@@ -1189,7 +1241,7 @@ class PoseDetectionApp(QMainWindow):
         # 视频1旋转
         if hasattr(self, 'cap1') and self.cap1 is not None:
             video1_rotation_layout = QHBoxLayout()
-            video1_rotation_layout.addWidget(QLabel("视频1旋转:"))
+            video1_rotation_layout.addWidget(QLabel(tr("export.video1_rotation")))
             self.video1_rotation_combo = QComboBox()
             self.video1_rotation_combo.addItems(["0°", "90°", "180°", "270°"])
             # 初始化为当前播放旋转角度
@@ -1202,7 +1254,7 @@ class PoseDetectionApp(QMainWindow):
         # 视频2旋转
         if hasattr(self, 'cap2') and self.cap2 is not None:
             video2_rotation_layout = QHBoxLayout()
-            video2_rotation_layout.addWidget(QLabel("视频2旋转:"))
+            video2_rotation_layout.addWidget(QLabel(tr("export.video2_rotation")))
             self.video2_rotation_combo = QComboBox()
             self.video2_rotation_combo.addItems(["0°", "90°", "180°", "270°"])
             # 初始化为当前播放旋转角度
@@ -1215,34 +1267,34 @@ class PoseDetectionApp(QMainWindow):
         layout.addWidget(rotation_group)
 
         # 水印设置 - 紧凑布局
-        watermark_group = QGroupBox("水印设置")
+        watermark_group = QGroupBox(tr("export.watermark_settings"))
         watermark_layout = QVBoxLayout(watermark_group)
         watermark_layout.setContentsMargins(8, 8, 8, 8)
         watermark_layout.setSpacing(4)
 
         # 启用水印
-        self.watermark_enabled_cb = QCheckBox("启用水印")
+        self.watermark_enabled_cb = QCheckBox(tr("export.enable_watermark"))
         self.watermark_enabled_cb.setChecked(self.watermark_enabled)  # 使用默认值
         self.watermark_enabled_cb.stateChanged.connect(self.on_watermark_enabled_changed)
         watermark_layout.addWidget(self.watermark_enabled_cb)
 
         # 文字水印设置 - 紧凑布局
-        text_watermark_group = QGroupBox("文字水印")
+        text_watermark_group = QGroupBox(tr("export.text_watermark"))
         text_watermark_layout = QVBoxLayout(text_watermark_group)
         text_watermark_layout.setContentsMargins(6, 6, 6, 6)
         text_watermark_layout.setSpacing(3)
 
         # 启用文字水印
-        self.text_watermark_enabled_cb = QCheckBox("启用文字水印")
+        self.text_watermark_enabled_cb = QCheckBox(tr("export.text_watermark"))
         self.text_watermark_enabled_cb.setChecked(self.text_watermark_enabled)
         self.text_watermark_enabled_cb.stateChanged.connect(self.on_text_watermark_enabled_changed)
         text_watermark_layout.addWidget(self.text_watermark_enabled_cb)
 
         # 文字水印文本
         text_layout = QHBoxLayout()
-        text_layout.addWidget(QLabel("水印文本:"))
+        text_layout.addWidget(QLabel(tr("export.watermark_text")))
         self.watermark_text_input = QLineEdit()
-        self.watermark_text_input.setPlaceholderText("输入水印文本...")
+        self.watermark_text_input.setPlaceholderText(tr("export.watermark_text_placeholder"))
         self.watermark_text_input.setText(self.watermark_text)  # 使用默认文字
         self.watermark_text_input.textChanged.connect(self.on_watermark_text_changed)
         text_layout.addWidget(self.watermark_text_input)
@@ -1250,7 +1302,7 @@ class PoseDetectionApp(QMainWindow):
 
         # 文字水印位置
         text_position_layout = QHBoxLayout()
-        text_position_layout.addWidget(QLabel("位置:"))
+        text_position_layout.addWidget(QLabel(tr("export.text_position")))
         self.text_watermark_position_combo = QComboBox()
         self.text_watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
         self.text_watermark_position_combo.setCurrentText(self.text_watermark_position)
@@ -1261,20 +1313,20 @@ class PoseDetectionApp(QMainWindow):
         watermark_layout.addWidget(text_watermark_group)
 
         # 图片水印设置 - 紧凑布局
-        image_watermark_group = QGroupBox("图片水印")
+        image_watermark_group = QGroupBox(tr("export.image_watermark"))
         image_watermark_layout = QVBoxLayout(image_watermark_group)
         image_watermark_layout.setContentsMargins(6, 6, 6, 6)
         image_watermark_layout.setSpacing(3)
 
         # 启用图片水印
-        self.image_watermark_enabled_cb = QCheckBox("启用图片水印")
+        self.image_watermark_enabled_cb = QCheckBox(tr("export.image_watermark"))
         self.image_watermark_enabled_cb.setChecked(self.image_watermark_enabled)
         self.image_watermark_enabled_cb.stateChanged.connect(self.on_image_watermark_enabled_changed)
         image_watermark_layout.addWidget(self.image_watermark_enabled_cb)
 
         # 图片选择
         image_layout = QHBoxLayout()
-        image_layout.addWidget(QLabel("水印图片:"))
+        image_layout.addWidget(QLabel(tr("export.watermark_image")))
         self.watermark_image_input = QLineEdit()
         self.watermark_image_input.setPlaceholderText("选择水印图片...")
         self.watermark_image_input.setText("assets/snownavi_logo.png")
@@ -1288,7 +1340,7 @@ class PoseDetectionApp(QMainWindow):
 
         # 图片水印位置
         image_position_layout = QHBoxLayout()
-        image_position_layout.addWidget(QLabel("位置:"))
+        image_position_layout.addWidget(QLabel(tr("export.image_position")))
         self.image_watermark_position_combo = QComboBox()
         self.image_watermark_position_combo.addItems(["右下角", "右上角", "左下角", "左上角", "居中"])
         self.image_watermark_position_combo.setCurrentText(self.image_watermark_position)
@@ -1299,14 +1351,14 @@ class PoseDetectionApp(QMainWindow):
         watermark_layout.addWidget(image_watermark_group)
 
         # 通用水印设置 - 紧凑布局
-        common_group = QGroupBox("通用设置")
+        common_group = QGroupBox(tr("export.common_settings"))
         common_layout = QVBoxLayout(common_group)
         common_layout.setContentsMargins(6, 6, 6, 6)
         common_layout.setSpacing(4)
 
         # 水印透明度
         opacity_layout = QHBoxLayout()
-        opacity_layout.addWidget(QLabel("透明度:"))
+        opacity_layout.addWidget(QLabel(tr("export.opacity")))
         self.watermark_opacity_slider = QSlider(Qt.Orientation.Horizontal)
         self.watermark_opacity_slider.setRange(10, 100)
         self.watermark_opacity_slider.setValue(70)
@@ -1318,7 +1370,7 @@ class PoseDetectionApp(QMainWindow):
 
         # 水印大小
         size_layout = QHBoxLayout()
-        size_layout.addWidget(QLabel("大小:"))
+        size_layout.addWidget(QLabel(tr("export.size")))
         self.watermark_size_combo = QComboBox()
         self.watermark_size_combo.addItems(["小", "中", "大"])
         self.watermark_size_combo.setCurrentText("中")
@@ -1331,7 +1383,7 @@ class PoseDetectionApp(QMainWindow):
         layout.addWidget(watermark_group)
 
         # 进度显示区域 - 紧凑布局
-        progress_group = QGroupBox("导出进度")
+        progress_group = QGroupBox(tr("export.progress"))
         progress_layout = QVBoxLayout(progress_group)
         progress_layout.setContentsMargins(8, 8, 8, 8)
         progress_layout.setSpacing(4)
@@ -1361,7 +1413,7 @@ class PoseDetectionApp(QMainWindow):
         progress_info_layout = QHBoxLayout()
 
         # 当前帧/总帧数
-        self.frame_progress_label = QLabel("帧: 0 / 0")
+        self.frame_progress_label = QLabel(tr("export.frame_progress", current=0, total=0))
         self.frame_progress_label.setStyleSheet("font-size: 11px; color: #666;")
         progress_info_layout.addWidget(self.frame_progress_label)
 
@@ -1371,7 +1423,7 @@ class PoseDetectionApp(QMainWindow):
         progress_info_layout.addWidget(self.percentage_label)
 
         # 预计剩余时间
-        self.eta_label = QLabel("预计剩余: --")
+        self.eta_label = QLabel(tr("export.eta", time="--"))
         self.eta_label.setStyleSheet("font-size: 11px; color: #666;")
         progress_info_layout.addWidget(self.eta_label)
 
@@ -1391,17 +1443,17 @@ class PoseDetectionApp(QMainWindow):
         # 按钮
         button_layout = QHBoxLayout()
 
-        self.export_start_btn = ModernButton("开始导出", "", "#4CAF50")
+        self.export_start_btn = ModernButton(tr("export.start_export"), "", "#4CAF50")
         self.export_start_btn.clicked.connect(self.start_export)
         button_layout.addWidget(self.export_start_btn)
 
         # 取消按钮（导出时显示）
-        self.export_cancel_btn = ModernButton("取消导出", "", "#F44336")
+        self.export_cancel_btn = ModernButton(tr("export.cancel_export"), "", "#F44336")
         self.export_cancel_btn.clicked.connect(self.cancel_export)
         self.export_cancel_btn.setVisible(False)
         button_layout.addWidget(self.export_cancel_btn)
 
-        close_btn = ModernButton("关闭", "", "#607D8B")
+        close_btn = ModernButton(tr("settings.close"), "", "#607D8B")
         close_btn.clicked.connect(self.export_dialog.hide)
         button_layout.addWidget(close_btn)
 
@@ -1895,33 +1947,33 @@ class PoseDetectionApp(QMainWindow):
     def create_performance_dialog(self):
         """创建性能监控对话框"""
         self.performance_dialog = QDialog(self)
-        self.performance_dialog.setWindowTitle("性能监控")
+        self.performance_dialog.setWindowTitle(tr("performance.title"))
         self.performance_dialog.setFixedSize(300, 200)
 
         layout = QVBoxLayout(self.performance_dialog)
 
-        title_label = QLabel("📊 性能监控")
+        title_label = QLabel("📊 " + tr("performance.monitoring"))
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
 
-        info_label = QLabel("性能监控功能正在开发中...")
+        info_label = QLabel(tr("performance.developing"))
         info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(info_label)
 
-        close_btn = ModernButton("关闭", "", "#607D8B")
+        close_btn = ModernButton(tr("settings.close"), "", "#607D8B")
         close_btn.clicked.connect(self.performance_dialog.hide)
         layout.addWidget(close_btn)
 
     def create_help_dialog(self):
         """创建帮助对话框"""
         self.help_dialog = QDialog(self)
-        self.help_dialog.setWindowTitle("帮助")
+        self.help_dialog.setWindowTitle(tr("help.title"))
         self.help_dialog.setFixedSize(500, 400)
 
         layout = QVBoxLayout(self.help_dialog)
 
-        title_label = QLabel("❓ 使用帮助")
+        title_label = QLabel("❓ " + tr("help.usage_help"))
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
@@ -1957,7 +2009,7 @@ class PoseDetectionApp(QMainWindow):
         """)
         layout.addWidget(help_text)
 
-        close_btn = ModernButton("关闭", "", "#607D8B")
+        close_btn = ModernButton(tr("settings.close"), "", "#607D8B")
         close_btn.clicked.connect(self.help_dialog.hide)
         layout.addWidget(close_btn)
 
@@ -2852,7 +2904,7 @@ class PoseDetectionApp(QMainWindow):
                 self.update_time_display1()
 
         except Exception as e:
-            print(f"跳转视频1位置时出错: {e}")
+            print(tr("messages.seek_video1_error", error=str(e)))
 
     def seek_to_position2(self):
         """跳转视频2到指定位置"""
@@ -2880,12 +2932,12 @@ class PoseDetectionApp(QMainWindow):
                 self.update_time_display2()
 
         except Exception as e:
-            print(f"跳转视频2位置时出错: {e}")
+            print(tr("messages.seek_video2_error", error=str(e)))
 
     def create_landmark_selector_dialog(self):
         """创建完整配置管理器对话框"""
         self.landmark_selector_dialog = QDialog(self)
-        self.landmark_selector_dialog.setWindowTitle("完整配置管理器")
+        self.landmark_selector_dialog.setWindowTitle(tr("settings.title"))
         self.landmark_selector_dialog.setFixedSize(500, 700)
 
         # 设置对话框样式，确保在日间/夜间模式下都保持一致
@@ -2999,7 +3051,7 @@ class PoseDetectionApp(QMainWindow):
         layout = QVBoxLayout(self.landmark_selector_dialog)
 
         # 标题
-        title_label = QLabel("⚙️ 完整配置管理器")
+        title_label = QLabel("⚙️ " + tr("settings.title"))
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("color: #2c3e50; padding: 10px;")
@@ -3057,33 +3109,33 @@ class PoseDetectionApp(QMainWindow):
         control_frame = QFrame()
         control_layout = QHBoxLayout(control_frame)
 
-        btn_all = ModernButton("全选", "", "#4CAF50")
+        btn_all = ModernButton(tr("settings.select_all"), "", "#4CAF50")
         btn_all.clicked.connect(self.select_all_landmarks)
         control_layout.addWidget(btn_all)
 
-        btn_none = ModernButton("全不选", "", "#F44336")
+        btn_none = ModernButton(tr("settings.deselect_all"), "", "#F44336")
         btn_none.clicked.connect(self.deselect_all_landmarks)
         control_layout.addWidget(btn_none)
 
-        btn_invert = ModernButton("反选", "", "#FF9800")
+        btn_invert = ModernButton(tr("settings.invert_selection"), "", "#FF9800")
         btn_invert.clicked.connect(self.invert_landmark_selection)
         control_layout.addWidget(btn_invert)
 
         layout.addWidget(control_frame)
 
         # 完整配置管理区域
-        config_management_group = QGroupBox("完整配置管理")
+        config_management_group = QGroupBox(tr("settings.config_management"))
         config_management_layout = QVBoxLayout(config_management_group)
 
         # 保存配置
         save_layout = QHBoxLayout()
-        save_layout.addWidget(QLabel("配置名称:"))
+        save_layout.addWidget(QLabel(tr("settings.config_name")))
 
         self.config_name_input = QLineEdit()
-        self.config_name_input.setPlaceholderText("输入配置名称...")
+        self.config_name_input.setPlaceholderText(tr("settings.config_name_placeholder"))
         save_layout.addWidget(self.config_name_input)
 
-        save_btn = ModernButton("保存完整配置", "", "#2196F3")
+        save_btn = ModernButton(tr("settings.save_config"), "", "#2196F3")
         save_btn.clicked.connect(self.save_complete_config)
         save_layout.addWidget(save_btn)
 
@@ -3091,17 +3143,17 @@ class PoseDetectionApp(QMainWindow):
 
         # 快捷选择
         quick_layout = QHBoxLayout()
-        quick_layout.addWidget(QLabel("快捷选择:"))
+        quick_layout.addWidget(QLabel(tr("settings.quick_select")))
 
         self.config_combo = QComboBox()
         self.config_combo.setMinimumWidth(150)
         quick_layout.addWidget(self.config_combo)
 
-        load_btn = ModernButton("应用", "", "#4CAF50")
+        load_btn = ModernButton(tr("settings.apply"), "", "#4CAF50")
         load_btn.clicked.connect(self.load_complete_config)
         quick_layout.addWidget(load_btn)
 
-        delete_btn = ModernButton("删除", "", "#F44336")
+        delete_btn = ModernButton(tr("dialogs.delete"), "", "#F44336")
         delete_btn.clicked.connect(self.delete_complete_config)
         quick_layout.addWidget(delete_btn)
 
@@ -3109,7 +3161,7 @@ class PoseDetectionApp(QMainWindow):
 
         # 预设配置按钮
         preset_layout = QHBoxLayout()
-        preset_layout.addWidget(QLabel("预设配置:"))
+        preset_layout.addWidget(QLabel(tr("settings.preset_configs")))
 
         preset_buttons = [
             ("上半身", self.preset_upper_body),
@@ -3327,7 +3379,7 @@ class PoseDetectionApp(QMainWindow):
         self.config_tabs.addTab(color_widget, "🎨 颜色设置")
 
         # 关闭按钮
-        close_btn = ModernButton("关闭", "", "#607D8B")
+        close_btn = ModernButton(tr("settings.close"), "", "#607D8B")
         close_btn.clicked.connect(self.landmark_selector_dialog.hide)
         layout.addWidget(close_btn)
 
@@ -3615,7 +3667,7 @@ class PoseDetectionApp(QMainWindow):
                 json.dump(serializable_configs, f, indent=2, ensure_ascii=False)
 
         except Exception as e:
-            print(f"保存配置文件时出错: {e}")
+            print(tr("messages.save_config_error", error=str(e)))
 
     def load_configs_from_file(self):
         """从文件加载配置"""
@@ -3637,7 +3689,7 @@ class PoseDetectionApp(QMainWindow):
                 self.landmark_configs = {}
 
         except Exception as e:
-            print(f"加载配置文件时出错: {e}")
+            print(tr("messages.load_config_error", error=str(e)))
             self.landmark_configs = {}
 
     def save_complete_configs_to_file(self):
@@ -3759,7 +3811,7 @@ class PoseDetectionApp(QMainWindow):
             self.update_status(f"已应用预设: {preset_name}")
 
         except Exception as e:
-            print(f"应用预设配置时出错: {e}")
+            print(tr("messages.apply_preset_error", error=str(e)))
 
     def update_toolbar_config_combo(self):
         """更新工具栏配置下拉框"""
@@ -3807,7 +3859,7 @@ class PoseDetectionApp(QMainWindow):
             self.toolbar_config_combo.setCurrentIndex(0)
 
         except Exception as e:
-            print(f"应用工具栏配置时出错: {e}")
+            print(tr("messages.apply_toolbar_config_error", error=str(e)))
 
     def apply_complete_config_from_toolbar(self, config_name):
         """从工具栏应用完整配置"""
@@ -3867,7 +3919,7 @@ class PoseDetectionApp(QMainWindow):
             self.update_status(f"已应用完整配置: {config_name}")
 
         except Exception as e:
-            print(f"应用完整配置时出错: {e}")
+            print(tr("messages.apply_complete_config_error", error=str(e)))
 
     def update_complete_config_combo(self):
         """更新完整配置下拉框"""
@@ -3887,6 +3939,37 @@ class PoseDetectionApp(QMainWindow):
         self.status_label.setText(message)
         self.toolbar_status.setText(message)
 
+    def on_language_changed(self, language_name):
+        """语言切换回调"""
+        try:
+            # 根据语言名称找到语言代码
+            available_languages = get_available_languages()
+            language_code = None
+            for code, name in available_languages.items():
+                if name == language_name:
+                    language_code = code
+                    break
+
+            if language_code:
+                # 切换语言
+                set_language(language_code)
+
+                # 保存语言偏好
+                tm = get_translation_manager()
+                tm.save_language_preference(language_code)
+
+                # 显示重启提示
+                QMessageBox.information(
+                    self,
+                    tr("language.title"),
+                    tr("language.restart_required")
+                )
+
+                self.update_status(f"Language changed to: {language_name}")
+
+        except Exception as e:
+            print(tr("messages.language_switch_failed", error=str(e)))
+
     def closeEvent(self, event):
         """窗口关闭事件"""
         # 清理资源
@@ -3902,9 +3985,9 @@ def main():
     app = QApplication(sys.argv)
     
     # 设置应用信息
-    app.setApplicationName("SnowNavi Pose Analyzer")
-    app.setApplicationVersion("2.0")
-    app.setOrganizationName("SnowNavi")
+    app.setApplicationName(tr("app.title"))
+    app.setApplicationVersion(tr("app.version"))
+    app.setOrganizationName(tr("app.organization"))
     
     # 创建主窗口
     window = PoseDetectionApp()

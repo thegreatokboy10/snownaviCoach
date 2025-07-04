@@ -53,11 +53,9 @@ class ModernButton(QPushButton):
             QPushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 {self.lighten_color(color)}, stop:1 {color});
-                transform: translateY(-1px);
             }}
             QPushButton:pressed {{
                 background: {self.darken_color(color)};
-                transform: translateY(1px);
             }}
             QPushButton:disabled {{
                 background: #CCCCCC;
@@ -169,11 +167,20 @@ class PoseDetectionApp(QMainWindow):
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
         
-        # 设置应用样式
+        # 设置应用样式，强制覆盖系统主题
         self.setStyleSheet("""
             QMainWindow {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #f8f9fa, stop:1 #e9ecef);
+                color: #2c3e50;
+            }
+            QWidget {
+                background: transparent;
+                color: #2c3e50;
+            }
+            QFrame {
+                background: transparent;
+                border: none;
             }
             QMenuBar {
                 background: #2c3e50;
@@ -185,15 +192,56 @@ class PoseDetectionApp(QMainWindow):
                 background: transparent;
                 padding: 8px 12px;
                 border-radius: 4px;
+                color: white;
             }
             QMenuBar::item:selected {
                 background: #34495e;
+                color: white;
             }
             QStatusBar {
                 background: #34495e;
                 color: white;
                 border: none;
                 padding: 4px;
+            }
+            QLabel {
+                color: #2c3e50;
+                background: transparent;
+            }
+            QGroupBox {
+                font-weight: bold;
+                color: #2c3e50;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+                color: #34495e;
+                background: white;
+            }
+            QCheckBox {
+                color: #2c3e50;
+                spacing: 8px;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 2px solid #bdc3c7;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background: #3498db;
+                border: 2px solid #2980b9;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #3498db;
             }
         """)
         
@@ -879,18 +927,155 @@ class PoseDetectionApp(QMainWindow):
         self.export_dialog.setWindowTitle("导出视频")
         self.export_dialog.setFixedSize(900, 700)  # 增大窗口以容纳更多内容
 
+        # 设置统一的对话框样式，确保在日间/夜间模式下都保持一致
+        self.export_dialog.setStyleSheet("""
+            QDialog {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
+                color: #2c3e50;
+            }
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                color: #2c3e50;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+                color: #34495e;
+                background: white;
+            }
+            QCheckBox {
+                color: #2c3e50;
+                font-size: 11px;
+                spacing: 8px;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 2px solid #bdc3c7;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background: #3498db;
+                border: 2px solid #2980b9;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #3498db;
+            }
+            QCheckBox::indicator:disabled {
+                background: #ecf0f1;
+                border: 2px solid #bdc3c7;
+            }
+            QLabel {
+                color: #2c3e50;
+                font-size: 11px;
+                background: transparent;
+            }
+            QComboBox {
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                padding: 6px 12px;
+                background: white;
+                color: #2c3e50;
+                font-size: 11px;
+                min-height: 20px;
+            }
+            QComboBox:hover {
+                border: 2px solid #3498db;
+            }
+            QComboBox:focus {
+                border: 2px solid #2980b9;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgNEw2IDdMOSA0IiBzdHJva2U9IiM3Zjg2OWMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+                width: 12px;
+                height: 12px;
+            }
+            QLineEdit {
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background: white;
+                color: #2c3e50;
+                font-size: 11px;
+                min-height: 20px;
+            }
+            QLineEdit:hover {
+                border: 2px solid #3498db;
+            }
+            QLineEdit:focus {
+                border: 2px solid #2980b9;
+            }
+            QSlider::groove:horizontal {
+                border: 1px solid #bdc3c7;
+                height: 6px;
+                background: #ecf0f1;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 2px solid #2980b9;
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                margin: -6px 0;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2980b9;
+            }
+            QProgressBar {
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                background: #ecf0f1;
+                text-align: center;
+                color: #2c3e50;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QProgressBar::chunk {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2980b9);
+                border-radius: 4px;
+            }
+            QTextEdit {
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                background: white;
+                color: #2c3e50;
+                font-size: 10px;
+                padding: 8px;
+            }
+        """)
+
         # 主布局使用水平分割
         main_layout = QHBoxLayout(self.export_dialog)
 
-        # 左侧：设置区域
+        # 左侧：设置区域 - 紧凑布局
         left_widget = QWidget()
         left_main_layout = QVBoxLayout(left_widget)
-        left_widget.setFixedWidth(450)
+        left_main_layout.setContentsMargins(8, 8, 8, 8)  # 减少边距
+        left_main_layout.setSpacing(6)  # 减少间距
+        left_widget.setFixedWidth(350)  # 减少左侧宽度，给预览更多空间
 
-        # 标题
+        # 标题 - 更紧凑
         title_label = QLabel("💾 导出视频")
-        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))  # 减小字体
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet("color: #2c3e50; padding: 5px;")  # 减少内边距
         left_main_layout.addWidget(title_label)
 
         # 滚动区域
@@ -898,38 +1083,50 @@ class PoseDetectionApp(QMainWindow):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+        """)
 
         # 滚动区域内的widget
         scroll_widget = QWidget()
         left_layout = QVBoxLayout(scroll_widget)
+        left_layout.setContentsMargins(5, 5, 5, 5)  # 减少内容边距
+        left_layout.setSpacing(8)  # 减少控件间距
 
         scroll_area.setWidget(scroll_widget)
         left_main_layout.addWidget(scroll_area)
 
-        # 右侧：预览区域
+        # 右侧：预览区域 - 优化空间利用
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(8, 8, 8, 8)  # 减少边距
+        right_layout.setSpacing(6)  # 减少间距
 
-        # 预览标题
+        # 预览标题 - 更紧凑
         preview_title = QLabel("🎬 预览效果")
-        preview_title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        preview_title.setFont(QFont("Arial", 12, QFont.Weight.Bold))  # 减小字体
         preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview_title.setStyleSheet("color: #2c3e50; padding: 3px;")  # 减少内边距
         right_layout.addWidget(preview_title)
 
-        # 预览视频区域
+        # 预览视频区域 - 扩大尺寸，充分利用空间
         self.export_preview_widget = VideoWidget()
-        self.export_preview_widget.setMinimumSize(350, 250)
+        self.export_preview_widget.setMinimumSize(500, 420)  # 显著增大预览区域
         self.export_preview_widget.setText("🎬 点击播放预览\n查看导出效果")
-        right_layout.addWidget(self.export_preview_widget)
+        right_layout.addWidget(self.export_preview_widget, 1)  # 添加拉伸因子，让预览区域占据剩余空间
 
-        # 预览控制按钮
+        # 预览控制按钮 - 更紧凑
         preview_control_layout = QHBoxLayout()
+        preview_control_layout.setSpacing(6)  # 减少按钮间距
 
-        self.preview_play_btn = ModernButton("播放预览", "▶️", "#4CAF50")
+        self.preview_play_btn = ModernButton("播放", "▶️", "#4CAF50")  # 简化文字
         self.preview_play_btn.clicked.connect(self.toggle_export_preview)
         preview_control_layout.addWidget(self.preview_play_btn)
 
-        self.preview_refresh_btn = ModernButton("刷新预览", "🔄", "#2196F3")
+        self.preview_refresh_btn = ModernButton("刷新", "🔄", "#2196F3")  # 简化文字
         self.preview_refresh_btn.clicked.connect(self.refresh_export_preview)
         preview_control_layout.addWidget(self.preview_refresh_btn)
 
@@ -942,9 +1139,11 @@ class PoseDetectionApp(QMainWindow):
         # 继续使用left_layout作为主要设置布局
         layout = left_layout
 
-        # 视频选择
+        # 视频选择 - 紧凑布局
         video_group = QGroupBox("选择要导出的视频")
         video_layout = QVBoxLayout(video_group)
+        video_layout.setContentsMargins(8, 8, 8, 8)  # 减少内边距
+        video_layout.setSpacing(4)  # 减少间距
 
         self.export_video1_cb = QCheckBox("导出视频1（带姿态检测）")
         self.export_video1_cb.setChecked(True)
@@ -955,9 +1154,11 @@ class PoseDetectionApp(QMainWindow):
 
         layout.addWidget(video_group)
 
-        # 导出设置
+        # 导出设置 - 紧凑布局
         settings_group = QGroupBox("导出设置")
         settings_layout = QVBoxLayout(settings_group)
+        settings_layout.setContentsMargins(8, 8, 8, 8)  # 减少内边距
+        settings_layout.setSpacing(6)  # 减少间距
 
         # 质量设置
         quality_layout = QHBoxLayout()
@@ -979,9 +1180,11 @@ class PoseDetectionApp(QMainWindow):
 
         layout.addWidget(settings_group)
 
-        # 旋转设置
+        # 旋转设置 - 紧凑布局
         rotation_group = QGroupBox("旋转设置")
         rotation_layout = QVBoxLayout(rotation_group)
+        rotation_layout.setContentsMargins(8, 8, 8, 8)
+        rotation_layout.setSpacing(4)
 
         # 视频1旋转
         if hasattr(self, 'cap1') and self.cap1 is not None:
@@ -1011,9 +1214,11 @@ class PoseDetectionApp(QMainWindow):
 
         layout.addWidget(rotation_group)
 
-        # 水印设置
+        # 水印设置 - 紧凑布局
         watermark_group = QGroupBox("水印设置")
         watermark_layout = QVBoxLayout(watermark_group)
+        watermark_layout.setContentsMargins(8, 8, 8, 8)
+        watermark_layout.setSpacing(4)
 
         # 启用水印
         self.watermark_enabled_cb = QCheckBox("启用水印")
@@ -1021,9 +1226,11 @@ class PoseDetectionApp(QMainWindow):
         self.watermark_enabled_cb.stateChanged.connect(self.on_watermark_enabled_changed)
         watermark_layout.addWidget(self.watermark_enabled_cb)
 
-        # 文字水印设置
+        # 文字水印设置 - 紧凑布局
         text_watermark_group = QGroupBox("文字水印")
         text_watermark_layout = QVBoxLayout(text_watermark_group)
+        text_watermark_layout.setContentsMargins(6, 6, 6, 6)
+        text_watermark_layout.setSpacing(3)
 
         # 启用文字水印
         self.text_watermark_enabled_cb = QCheckBox("启用文字水印")
@@ -1053,9 +1260,11 @@ class PoseDetectionApp(QMainWindow):
 
         watermark_layout.addWidget(text_watermark_group)
 
-        # 图片水印设置
+        # 图片水印设置 - 紧凑布局
         image_watermark_group = QGroupBox("图片水印")
         image_watermark_layout = QVBoxLayout(image_watermark_group)
+        image_watermark_layout.setContentsMargins(6, 6, 6, 6)
+        image_watermark_layout.setSpacing(3)
 
         # 启用图片水印
         self.image_watermark_enabled_cb = QCheckBox("启用图片水印")
@@ -1089,9 +1298,11 @@ class PoseDetectionApp(QMainWindow):
 
         watermark_layout.addWidget(image_watermark_group)
 
-        # 通用水印设置
+        # 通用水印设置 - 紧凑布局
         common_group = QGroupBox("通用设置")
         common_layout = QVBoxLayout(common_group)
+        common_layout.setContentsMargins(6, 6, 6, 6)
+        common_layout.setSpacing(4)
 
         # 水印透明度
         opacity_layout = QHBoxLayout()
@@ -1119,9 +1330,11 @@ class PoseDetectionApp(QMainWindow):
 
         layout.addWidget(watermark_group)
 
-        # 进度显示区域
+        # 进度显示区域 - 紧凑布局
         progress_group = QGroupBox("导出进度")
         progress_layout = QVBoxLayout(progress_group)
+        progress_layout.setContentsMargins(8, 8, 8, 8)
+        progress_layout.setSpacing(4)
 
         # 总体进度条
         self.export_progress = QProgressBar()
@@ -2675,11 +2888,111 @@ class PoseDetectionApp(QMainWindow):
         self.landmark_selector_dialog.setWindowTitle("完整配置管理器")
         self.landmark_selector_dialog.setFixedSize(500, 700)
 
-        # 设置对话框样式
+        # 设置对话框样式，确保在日间/夜间模式下都保持一致
         self.landmark_selector_dialog.setStyleSheet("""
             QDialog {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #f8f9fa, stop:1 #e9ecef);
+                color: #2c3e50;
+            }
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                color: #2c3e50;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 8px 0 8px;
+                color: #34495e;
+                background: white;
+            }
+            QCheckBox {
+                color: #2c3e50;
+                font-size: 11px;
+                spacing: 8px;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 2px solid #bdc3c7;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background: #3498db;
+                border: 2px solid #2980b9;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #3498db;
+            }
+            QLabel {
+                color: #2c3e50;
+                font-size: 11px;
+                background: transparent;
+            }
+            QComboBox {
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                padding: 6px 12px;
+                background: white;
+                color: #2c3e50;
+                font-size: 11px;
+                min-height: 20px;
+            }
+            QComboBox:hover {
+                border: 2px solid #3498db;
+            }
+            QComboBox:focus {
+                border: 2px solid #2980b9;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgNEw2IDdMOSA0IiBzdHJva2U9IiM3Zjg2OWMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+                width: 12px;
+                height: 12px;
+            }
+            QLineEdit {
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background: white;
+                color: #2c3e50;
+                font-size: 11px;
+                min-height: 20px;
+            }
+            QLineEdit:hover {
+                border: 2px solid #3498db;
+            }
+            QLineEdit:focus {
+                border: 2px solid #2980b9;
+            }
+            QSlider::groove:horizontal {
+                border: 1px solid #bdc3c7;
+                height: 6px;
+                background: #ecf0f1;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 2px solid #2980b9;
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                margin: -6px 0;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2980b9;
             }
         """)
 
@@ -2696,24 +3009,35 @@ class PoseDetectionApp(QMainWindow):
         self.config_tabs = QTabWidget()
         self.config_tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #ddd;
+                border: 2px solid #ddd;
                 border-radius: 8px;
                 background: white;
+                color: #2c3e50;
             }
             QTabBar::tab {
                 background: #f0f0f0;
-                border: 1px solid #ddd;
-                padding: 8px 16px;
+                border: 2px solid #ddd;
+                padding: 10px 16px;
                 margin-right: 2px;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
+                color: #2c3e50;
+                font-size: 11px;
+                font-weight: 500;
+                min-width: 80px;
             }
             QTabBar::tab:selected {
                 background: white;
-                border-bottom: 1px solid white;
+                border-bottom: 2px solid white;
+                color: #2980b9;
+                font-weight: bold;
             }
             QTabBar::tab:hover {
-                background: #e0e0e0;
+                background: #e8f4fd;
+                color: #2980b9;
+            }
+            QTabBar::tab:!selected {
+                margin-top: 2px;
             }
         """)
 
